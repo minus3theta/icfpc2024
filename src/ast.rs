@@ -91,7 +91,7 @@ impl Expr {
                     let y = stack.pop().context("No operand for BinaryOp")?;
                     stack.push(Expr::BinaryOp(o.clone(), x.into(), y.into()));
                 }
-                Token::If() => todo!(),
+                Token::If => todo!(),
                 &Token::Lambda(v) => {
                     let body = stack.pop().context("No body for lambda")?;
                     stack.push(Expr::Lambda(v, body.into()))
