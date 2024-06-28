@@ -51,6 +51,8 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
         b'S' => strings::decode(bytes).map(Token::String),
         b'B' => binary_op::decode(bytes).map(Token::BinaryOp),
         b'?' => Ok(Token::If()),
+        b'L' => integers::decode(bytes).map(Token::Lambda),
+        b'v' => integers::decode(bytes).map(Token::Variable),
         _ => Err(anyhow::anyhow!("Unknown token type")),
     }
 }
@@ -104,13 +106,13 @@ mod tests {
 
     #[test]
     fn decode_lambda() -> anyhow::Result<()> {
-        assert_eq!(decode_token("L2")?, Token::Lambda(2));
+        assert_eq!(decode_token("L#")?, Token::Lambda(2));
         Ok(())
     }
 
     #[test]
     fn decode_variable() -> anyhow::Result<()> {
-        assert_eq!(decode_token("v1")?, Token::Variable(1));
+        assert_eq!(decode_token("v\"")?, Token::Variable(1));
         Ok(())
     }
 
