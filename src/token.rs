@@ -46,7 +46,7 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
             .context("Unexpected body after F")?),
         b'I' => integers::decode(bytes).map(Token::Integer),
         b'S' => strings::decode(bytes).map(Token::String),
-        _ => todo!(),
+        _ => Err(anyhow::anyhow!("Unknown token type")),
     }
 }
 
