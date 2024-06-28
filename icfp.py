@@ -168,7 +168,10 @@ class Lambda(Token):
         return f"λ{self.var}={repr(self.proc)}"
 
     def __repr__(self):
-        return f"<λ{self.var} = {repr(self.proc)}>"
+        if self.proc is None:
+            return f"λ{self.var}"
+        else:
+            return f"λ{self.var}={repr(self.proc)}"
 
     # def eval(self, env={}, arg=None):
     #     return self
@@ -260,12 +263,16 @@ class BinaryOperator(Token):
         self.evaled = None
 
     def __repr__(self):
-        if self.arg1 is None:
-            return f"({self.op} _ _)"
-        elif self.op == "$":
-            return f"(apply {repr(self.arg1)} {repr(self.arg2)})"
+        if self.op == "$":
+            if self.arg1 is None:
+                return "apply"
+            else:
+                return f"(apply {repr(self.arg1)} {repr(self.arg2)})"
         else:
-            return f"({self.op} {repr(self.arg1)} {repr(self.arg2)})"
+            if self.arg1 is None:
+                return f"({self.op} _ _)"
+            else:
+                return f"({self.op} {repr(self.arg1)} {repr(self.arg2)})"
 
     def eval(self, env={}):
         if self.evaled is not None:
@@ -424,16 +431,19 @@ def make_ast(tokens):
 
 def parse_icfp(s):
     tokens = [Token.from_string(token_str) for token_str in re.split("[ \t\r\n]+", s)]
-    print("tokens:", [repr(token) for token in tokens])
+    print("  tokens:", ' '.join([repr(token) for token in tokens]))
     return make_ast(tokens)
 
 
 
 def my_test(icfp_expr, expected):
+    print("source:", icfp_expr)
     parsed = parse_icfp(icfp_expr)
-    print(repr(parsed[0]))
-    assert parsed[0].eval() == expected
-    print(f"== {repr(expected)}")
+    print("  parsed:", repr(parsed[0]))
+    result = parsed[0].eval()
+    print("  result:", repr(result))
+    print("  expected:", repr(expected))
+    assert result == expected
 
 
 if __name__ == '__main__':
