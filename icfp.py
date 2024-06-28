@@ -299,7 +299,9 @@ class BinaryOperator(Token):
                 newenv.update(x.env)
                 newenv[x.var] = y
                 # print(f"B$ env (L) = {newenv}/{env}, {repr(x.proc)}, after adding #{x.var} = {y}")
-                next = x.proc
+                next = Lambda(x.proc.var)
+                next.proc = x.proc.proc
+                next.lmd = x.proc.lmd
                 next.env = newenv
                 self.evaled = next
             else:
