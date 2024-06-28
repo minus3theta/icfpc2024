@@ -122,8 +122,22 @@ impl BinaryOp {
                         (String(lhs), String(rhs)) => Ok(format!("{lhs}{rhs}").into()),
                         (lhs, rhs) => bail!("Expected (String, String), got ({lhs:?}, {rhs:?})"),
                     },
-                    Take => todo!(),
-                    Drop => todo!(),
+                    Take => match (lhs, rhs) {
+                        (Integer(lhs), String(rhs)) => Ok(rhs
+                            .chars()
+                            .take(lhs as usize)
+                            .collect::<std::string::String>()
+                            .into()),
+                        (lhs, rhs) => bail!("Expected (Integer, String), got ({lhs:?}, {rhs:?})"),
+                    },
+                    Drop => match (lhs, rhs) {
+                        (Integer(lhs), String(rhs)) => Ok(rhs
+                            .chars()
+                            .skip(lhs as usize)
+                            .collect::<std::string::String>()
+                            .into()),
+                        (lhs, rhs) => bail!("Expected (Integer, String), got ({lhs:?}, {rhs:?})"),
+                    },
                     Apply => unreachable!(),
                 }
             }
