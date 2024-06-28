@@ -1,0 +1,263 @@
+
+<html>
+
+<head>
+  <title>Visualizer</title>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+  <script src="./lib/jquery-1.9.1.min.js"></script>
+  <style type="text/css">
+  </style>
+</head>
+<body>
+    <p>
+      <label>
+        Game Type:
+        <select id="gameTypeSelect">
+        <option value="lambdaman">lambdaman</option>
+        <option value="spaceship">spaceship</option>
+        </select>
+      </label>
+    </p>
+    <p>
+    <label>
+      Seed:
+      <input type="number" id="seed" value="1" min="1" max="25" onchange="generate()" />
+    </label>&emsp;
+  </p>
+  <p>
+    <label>
+      Input:<br>
+      <textarea id="input" rows="4" style="width:650px;" data-gramm_editor="false" oninput="updateOutput()"></textarea>
+    </label>
+  </p>
+  <p>
+    <label>
+      Output:<br>
+      <textarea id="output" rows="4" style="width:650px;" data-gramm_editor="false"
+        oninput="updateOutput()"></textarea>
+    </label>
+  </p>
+  <p>
+  </p>
+  <p>
+    <input type="button" id="save_png" value="Save as PNG">&ensp;
+    <input type="button" id="save_gif" value="Save as Animation GIF">&ensp;
+    <input type="checkbox" id="show_number" onchange="visualize()" checked>Show Number&ensp;
+  </p>
+  <p style="display:flex;">
+    <input type="button" id="play" value="▶" style="width:32px;height:32px;bottom:5px;position:relative;">&ensp;
+    <label>
+      slow
+      <input type="range" id="speed" min="1" max="60" value="30" style="width:200px;">
+      fast&emsp;
+    </label>
+    <label>
+      turn:
+      <input type="number" id="turn" value="0" min="0" max="0" style="width:70px;text-align:right;"
+        onchange="update_t(this.value)" />
+    </label>&ensp;
+  </p>
+  <p>
+    <input type="range" id="t_bar" min="0" max="0" value="0" style="width:780px;" onchange="update_t(this.value)"
+      oninput="update_t(this.value)">
+  </p>
+
+  <hr>
+  <p id="score"></p>
+  <div id="result" style="user-select:none">
+  </div>
+  <br>
+
+  <script src='./lib/gif.js'></script>
+  <script src='./lib/jszip.min.js'></script>
+  <script type="module">
+    import init, { gen, vis, get_max_turn } from './visualizer.js';
+
+    async function run() {
+      await init();
+      if ((new URL(document.location)).searchParams.get("seed") != null) {
+        document.getElementById("seed").value = (new URL(document.location)).searchParams.get("seed");
+      }
+      const output = (new URL(document.location)).searchParams.get("output");
+      if (output == "sample") {
+        document.getElementById("output").value = "4\n0 1 6\n6 6 6\n18 6 1\n16 1 5\n";
+      } else if (output != null) {
+        document.getElementById("output").value = output;
+      }
+      generate();
+    }
+    run();
+
+    function generate() {
+      const seed = document.getElementById("seed").value;
+      const gameType = document.getElementById("gameTypeSelect").value;
+      const input = gen(seed, gameType);
+      document.getElementById("input").value = input;
+      updateOutput();
+    }
+    window.generate = generate;
+
+    function visualize() {
+      const input = document.getElementById("input").value;
+      const output = document.getElementById("output").value;
+      const gameType = document.getElementById("gameTypeSelect").value;
+      const t = document.getElementById("turn").value;
+      try {
+        const ret = vis(input, output, t, gameType);
+        document.getElementById("score").innerHTML = "Score = " + ret.score;
+        if (ret.err != "") {
+          document.getElementById("score").innerHTML += " <font color='red'>(" + ret.err + ")</font>";
+        }
+        document.getElementById("result").innerHTML = ret.svg;
+      } catch (error) {
+        console.log(error);
+        document.getElementById("result").innerHTML = "<p>Invalid</p>";
+      }
+    }
+    window.visualize = visualize;
+
+    function update_t(t) {
+      const max_turn = Number(document.getElementById("turn").max);
+      const new_turn = Math.min(Math.max(0, t), max_turn);
+      document.getElementById("turn").value = new_turn;
+      document.getElementById("t_bar").value = new_turn;
+      visualize();
+    }
+    window.update_t = update_t;
+
+    var prev = Date.now();
+    const play = document.getElementById("play");
+    const speed = document.getElementById("speed");
+
+    function start_autoplay() {
+      if (Number(document.getElementById("turn").value) >= Number(document.getElementById("turn").max)) {
+        document.getElementById("turn").value = 0;
+      }
+      prev = Date.now();
+      play.value = "■";
+      update_t(document.getElementById("turn").value);
+    }
+    window.start_autoplay = start_autoplay;
+
+    function updateOutput() {
+      play.value = "▶";
+      const input = document.getElementById("input").value;
+      const output = document.getElementById("output").value;
+      const gameType = document.getElementById("gameTypeSelect").value;
+      try {
+        const t = get_max_turn(input, output, gameType);
+        document.getElementById("turn").max = t;
+        document.getElementById("t_bar").max = t;
+        update_t(t);
+      } catch (error) {
+        document.getElementById("result").innerHTML = "<p>Invalid</p>";
+      }
+    }
+    window.updateOutput = updateOutput;
+
+    play.onclick = event => {
+      if (play.value == "■") {
+        play.value = "▶";
+      } else {
+        start_autoplay();
+      }
+    }
+
+    function autoplay() {
+      if (play.value == "■") {
+        const now = Date.now();
+        let s = 2000;
+        if ((now - prev) * speed.value >= s) {
+          const inc = Math.floor((now - prev) * speed.value / s);
+          prev += Math.floor(inc * s / speed.value);
+          update_t(Number(document.getElementById("turn").value) + inc);
+          if (Number(document.getElementById("turn").value) >= Number(document.getElementById("turn").max)) {
+            play.value = "▶";
+          }
+        }
+      }
+      requestAnimationFrame(autoplay);
+    }
+    autoplay();
+
+    let selectedFiles = null;
+
+    document.getElementById("save_png").onclick = event => {
+      const input = document.getElementById("input").value;
+      const output = document.getElementById("output").value;
+      const t = document.getElementById("turn").value;
+      const gameType = document.getElementById("gameTypeSelect").value;
+      const svgData = vis(input, output, t, gameType).svg;
+      const svg = new DOMParser().parseFromString(svgData, "image/svg+xml").getElementById("vis");
+      const canvas = document.createElement("canvas");
+      canvas.width = svg.width.baseVal.value;
+      canvas.height = svg.height.baseVal.value;
+      const ctx = canvas.getContext("2d");
+      const image = new Image;
+      image.onload = function () {
+        ctx.drawImage(image, 0, 0);
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = "vis.png";
+        a.click();
+      }
+      image.src = "data:image/svg+xml;charset=utf-8;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    }
+
+    const save_gif = document.getElementById("save_gif");
+    save_gif.onclick = event => {
+      save_gif.disabled = true;
+      save_gif.value = "Generating GIF...";
+      const input = document.getElementById("input").value;
+      const output = document.getElementById("output").value;
+      const gameType = document.getElementById("gameTypeSelect").value;
+      const max_turn = Number(document.getElementById("turn").max);
+      const step = Math.max(1, Math.round(100 * speed.value / 2000));
+      const delay = step * 2000 / speed.value;
+      const gif = new GIF({
+        workers: 2,
+        quality: 10,
+      });
+      gif.on("progress", function (p) {
+        save_gif.value = String(Math.round(50 + 50 * p)).padStart(3, " ") + "% finished";
+      });
+      function add_frame(t) {
+        save_gif.value = String(Math.round(50.0 * t / max_turn)).padStart(3, " ") + "% finished";
+        const svgData = vis(input, output, t, gameType).svg;
+        const svg = new DOMParser().parseFromString(svgData, "image/svg+xml").getElementById("vis");
+        const canvas = document.createElement("canvas");
+        canvas.width = svg.width.baseVal.value;
+        canvas.height = svg.height.baseVal.value;
+        const ctx = canvas.getContext("2d");
+        const image = new Image;
+        image.onload = function () {
+          ctx.drawImage(image, 0, 0);
+          if (t == max_turn) {
+            gif.addFrame(canvas, { delay: 3000 });
+          } else {
+            gif.addFrame(canvas, { delay: delay });
+          }
+          if (t < max_turn) {
+            add_frame(Math.min(t + step, max_turn));
+          } else {
+            gif.on('finished', function (blob) {
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "vis.gif";
+              a.click();
+              window.URL.revokeObjectURL(a.href);
+              save_gif.value = "Save as Animation GIF";
+              save_gif.disabled = false;
+            });
+            gif.render();
+          }
+        }
+        image.src = "data:image/svg+xml;charset=utf-8;base64," + btoa(unescape(encodeURIComponent(svgData)));
+      }
+      add_frame(0);
+    }
+
+  </script>
+</body>
+
+</html>
