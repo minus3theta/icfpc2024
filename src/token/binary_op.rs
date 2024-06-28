@@ -22,11 +22,23 @@ pub enum BinaryOp {
 
 impl fmt::Display for BinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BinaryOp::Add => write!(f, "+"),
-            BinaryOp::Sub => write!(f, "-"),
-            BinaryOp::Mul => write!(f, "*")
-        }
+        let op_str = match self {
+            BinaryOp::Add => "+",
+            BinaryOp::Sub => "-",
+            BinaryOp::Mul => "*",
+            BinaryOp::Div => "/",
+            BinaryOp::Mod => "%",
+            BinaryOp::Less => "<",
+            BinaryOp::Greater => ">",
+            BinaryOp::Equal => "=",
+            BinaryOp::Or => "|",
+            BinaryOp::And => "&",
+            BinaryOp::Concat => ".",
+            BinaryOp::Take => "Take",
+            BinaryOp::Drop => "Drop",
+            BinaryOp::Apply => "Apply",
+        };
+        write!(f, "{}", op_str)
     }
 }
 

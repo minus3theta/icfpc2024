@@ -16,7 +16,12 @@ pub enum UnaryOp {
 
 impl fmt::Display for UnaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-    
+        match self {
+            UnaryOp::Neg => write!(f, "-"),
+            UnaryOp::Not => write!(f, "!"),
+            UnaryOp::ToInt => write!(f, "ToInt"),
+            UnaryOp::ToString => write!(f, "ToString"),
+        }
     }
 }
 

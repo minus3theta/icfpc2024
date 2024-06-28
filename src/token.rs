@@ -26,7 +26,7 @@ impl std::fmt::Display for Token {
             Token::Boolean(b) => b.fmt(f),
             Token::Integer(i) => i.fmt(f),
             Token::String(s) => s.fmt(f),
-            Token::UnaryOp(op) => unimplemented!("UnaryOp"),
+            Token::UnaryOp(op) => op.fmt(f),
             Token::BinaryOp(op) => op.fmt(f),
             Token::If() => write!(f, "?"),
             Token::Lambda(i) => write!(f, "L{i}"),
@@ -53,6 +53,7 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
             .then_some(Token::Boolean(false))
             .context("Unexpected body after F")?),
         b'I' => integers::decode(bytes).map(Token::Integer),
+        b'U' => unary_op::decode(bytes).map(Token::UnaryOp),
         b'S' => strings::decode(bytes).map(Token::String),
         b'B' => binary_op::decode(bytes).map(Token::BinaryOp),
         b'?' => Ok(Token::If()),
@@ -133,6 +134,14 @@ mod tests {
             encode(&[Token::String("Hello World!".into())])?,
             "SB%,,/}Q/2,$_".to_owned()
         );
+        Ok(())
+    }
+
+    #[test]
+    fn encode_language_test() -> anyhow::Result<()> {
+        let value = integers::encode(38798476154511)?;
+        let result = strings::decode(value.bytes())?;
+        assert_eq!(result, "4w3s0m3");
         Ok(())
     }
 }
