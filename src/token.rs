@@ -13,6 +13,9 @@ pub enum Token {
     String(String),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
+    If(),
+    Lambda(i64),
+    Variable(i64),
 }
 
 impl std::fmt::Display for Token {
@@ -47,9 +50,9 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
         b'I' => integers::decode(bytes).map(Token::Integer),
         b'S' => strings::decode(bytes).map(Token::String),
         b'B' => binary_op::decode(bytes).map(Token::BinaryOp),
+        b'?' => Ok(Token::If()),
         _ => Err(anyhow::anyhow!("Unknown token type")),
     }
-    // B. SF B$ B$ L" B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# L$ L# ? B= v# I" v" B. v" B$ v$ B- v# I" Sl I#,
 }
 
 pub fn encode(tokens: &[Token]) -> anyhow::Result<String> {
@@ -67,6 +70,9 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
         Token::String(s) => Ok(format!("S{}", strings::encode(s)?)),
         Token::UnaryOp(_) => todo!(),
         Token::BinaryOp(_) => todo!(),
+        Token::If() => todo!(),
+        Token::Lambda(_) => todo!(),
+        Token::Variable(_) => todo!(),
     }
 }
 
