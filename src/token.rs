@@ -1,10 +1,12 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
 
 use binary_op::BinaryOp;
+use unary_op::UnaryOp;
 
 mod binary_op;
 mod integers;
 mod strings;
+mod unary_op;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Token {
@@ -21,14 +23,17 @@ pub enum Token {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Token::Boolean(b) => b.fmt(f),
+            Token::Integer(i) => i.fmt(f),
             Token::String(s) => s.fmt(f),
-            _ => todo!(),
+            Token::UnaryOp(op) => unimplemented!("UnaryOp"),
+            Token::BinaryOp(op) => op.fmt(f),
+            Token::If() => write!(f, "?"),
+            Token::Lambda(i) => write!(f, "L{i}"),
+            Token::Variable(i) => write!(f, "v{i}"),
         }
     }
 }
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum UnaryOp {}
 
 pub fn decode_token_stream(s: &str) -> anyhow::Result<Vec<Token>> {
     s.split_ascii_whitespace().map(decode_token).collect()
@@ -53,7 +58,7 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
         b'?' => Ok(Token::If()),
         b'L' => integers::decode(bytes).map(Token::Lambda),
         b'v' => integers::decode(bytes).map(Token::Variable),
-        _ => Err(anyhow::anyhow!("Unknown token type")),
+        unk => bail!("Unknown token: {}", unk as char),
     }
 }
 
