@@ -1,7 +1,7 @@
 use anyhow::{bail, Context};
 
-use binary_op::BinaryOp;
-use unary_op::UnaryOp;
+pub use binary_op::BinaryOp;
+pub use unary_op::UnaryOp;
 
 mod binary_op;
 mod integers;

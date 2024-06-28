@@ -2,7 +2,7 @@ use std::fmt;
 
 use anyhow::{bail, Context, Ok};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnaryOp {
     // - Integer negation
     Neg,

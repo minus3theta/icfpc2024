@@ -2,7 +2,9 @@ use core::fmt;
 
 use anyhow::{bail, Context, Ok};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+use crate::ast::Expr;
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -61,4 +63,10 @@ pub fn decode(mut stream: impl Iterator<Item = u8>) -> anyhow::Result<BinaryOp> 
         b'$' => BinaryOp::Apply,
         _ => bail!("Unexpected char"),
     })
+}
+
+impl BinaryOp {
+    pub fn eval(&self, lhs: &Expr, rhs: &Expr) -> anyhow::Result<Expr> {
+        todo!()
+    }
 }
