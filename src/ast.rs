@@ -1,8 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, str::FromStr};
 
 use anyhow::{bail, Context};
 
-use crate::token::{BinaryOp, Token, UnaryOp};
+use crate::token::{decode_token_stream, BinaryOp, Token, UnaryOp};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ThunkEnum {
@@ -46,6 +46,7 @@ pub enum Expr {
     Literal(Value),
     UnaryOp(UnaryOp, Thunk),
     BinaryOp(BinaryOp, Thunk, Thunk),
+    If(Thunk, Thunk, Thunk),
     Lambda(i64, Thunk),
     Var(i64),
 }
@@ -74,6 +75,15 @@ impl From<String> for Expr {
     }
 }
 
+impl FromStr for Expr {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens = decode_token_stream(s)?;
+        Self::from_tokens(&tokens)
+    }
+}
+
 impl Expr {
     pub fn from_tokens(tokens: &[Token]) -> anyhow::Result<Self> {
         let mut stack: Vec<Self> = vec![];
@@ -91,7 +101,12 @@ impl Expr {
                     let y = stack.pop().context("No operand for BinaryOp")?;
                     stack.push(Expr::BinaryOp(o.clone(), x.into(), y.into()));
                 }
-                Token::If => todo!(),
+                Token::If => {
+                    let flag = stack.pop().context("No operand for If")?;
+                    let case_true = stack.pop().context("No operand for If")?;
+                    let case_false = stack.pop().context("No operand for If")?;
+                    stack.push(Expr::If(flag.into(), case_true.into(), case_false.into()));
+                }
                 &Token::Lambda(v) => {
                     let body = stack.pop().context("No body for lambda")?;
                     stack.push(Expr::Lambda(v, body.into()))
@@ -111,6 +126,11 @@ impl Expr {
             Expr::Literal(v) => Ok(v.clone()),
             Expr::BinaryOp(o, lhs, rhs) => o.apply(lhs, rhs, env),
             Expr::UnaryOp(o, e) => o.apply(e, env),
+            Expr::If(flag, t, f) => match flag.eval(env)? {
+                Value::Boolean(true) => t.eval(env),
+                Value::Boolean(false) => f.eval(env),
+                v => bail!("Expected boolean: got {v:?}"),
+            },
             &Expr::Lambda(var, ref body) => Ok(Value::Closure(env.clone(), var, body.clone())),
             &Expr::Var(var) => env
                 .iter()

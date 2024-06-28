@@ -2,7 +2,10 @@ use std::fmt;
 
 use anyhow::{bail, Context, Ok};
 
-use crate::ast::{Env, Thunk, Value};
+use crate::{
+    ast::{Env, Thunk, Value},
+    token::strings,
+};
 
 use super::integers;
 
@@ -38,14 +41,14 @@ impl UnaryOp {
             }
             UnaryOp::ToInt => {
                 if let Value::String(s) = value {
-                    Ok(integers::decode(s.bytes())?.into())
+                    Ok(integers::decode(strings::encode(&s)?.bytes())?.into())
                 } else {
                     bail!("Expected string: got {value:?}")
                 }
             }
             UnaryOp::ToString => {
                 if let Value::Integer(i) = value {
-                    Ok(integers::encode(i)?.into())
+                    Ok(strings::decode(integers::encode(i)?.bytes())?.into())
                 } else {
                     bail!("Expected integer: got {value:?}")
                 }
