@@ -12,6 +12,15 @@ pub enum Token {
     BinaryOp(BinaryOp),
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::String(s) => s.fmt(f),
+            _ => todo!(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnaryOp {}
 
