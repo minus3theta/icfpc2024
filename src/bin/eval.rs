@@ -8,7 +8,8 @@ fn main() -> anyhow::Result<()> {
 
     let tokens = token::decode_token_stream(input.trim())?;
     let ast = Expr::from_tokens(&tokens)?;
-    println!("{:?}", ast.eval(&vec![])?);
+    eprintln!("{}", &ast);
+    println!("{}", ast.eval(&vec![])?);
 
     Ok(())
 }

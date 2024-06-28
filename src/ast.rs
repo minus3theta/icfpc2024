@@ -16,6 +16,15 @@ impl From<Value> for ThunkEnum {
     }
 }
 
+impl std::fmt::Display for Thunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &*self.0.borrow() {
+            ThunkEnum::Expr(e) => e.fmt(f),
+            ThunkEnum::Value(v) => v.fmt(f),
+        }
+    }
+}
+
 impl Thunk {
     pub fn eval(&self, env: &Env) -> anyhow::Result<Value> {
         let mut t = self.0.borrow_mut();
@@ -81,6 +90,22 @@ impl FromStr for Expr {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let tokens = decode_token_stream(s)?;
         Self::from_tokens(&tokens)
+    }
+}
+
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::Literal(v) => v.fmt(f),
+            Expr::UnaryOp(o, v) => write!(f, "({o} {v})"),
+            Expr::BinaryOp(o, l, r) => match o {
+                BinaryOp::Apply => write!(f, "({l} {r})"),
+                o => write!(f, "({o} {l} {r})"),
+            },
+            Expr::If(c, t, e) => write!(f, "(if {c} {t} {e})"),
+            Expr::Lambda(var, body) => write!(f, "(λ v{var} . {body})"),
+            Expr::Var(var) => write!(f, "v{var}"),
+        }
     }
 }
 
@@ -165,5 +190,17 @@ impl From<i64> for Value {
 impl From<String> for Value {
     fn from(value: String) -> Self {
         Value::String(value)
+    }
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Value::*;
+        match self {
+            Boolean(b) => b.fmt(f),
+            Integer(i) => i.fmt(f),
+            String(s) => write!(f, r#""{s}""#),
+            Closure(_, var, body) => write!(f, "(λ v{var} . {body})"),
+        }
     }
 }
