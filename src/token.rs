@@ -90,9 +90,27 @@ mod tests {
     }
 
     #[test]
-    fn decode_integer_addition() -> anyhow::Result<()> {
+    fn decode_binary_op() -> anyhow::Result<()> {
         assert_eq!(decode_token("B+")?, Token::BinaryOp(BinaryOp::Add));
         assert_eq!(decode_token("B-")?, Token::BinaryOp(BinaryOp::Sub));
+        Ok(())
+    }
+
+    #[test]
+    fn decode_if() -> anyhow::Result<()> {
+        assert_eq!(decode_token("?")?, Token::If());
+        Ok(())
+    }
+
+    #[test]
+    fn decode_lambda() -> anyhow::Result<()> {
+        assert_eq!(decode_token("L2")?, Token::Lambda(2));
+        Ok(())
+    }
+
+    #[test]
+    fn decode_variable() -> anyhow::Result<()> {
+        assert_eq!(decode_token("v1")?, Token::Variable(1));
         Ok(())
     }
 
