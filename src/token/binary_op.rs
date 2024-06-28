@@ -2,7 +2,7 @@ use core::fmt;
 
 use anyhow::{bail, Context, Ok};
 
-use crate::ast::Expr;
+use crate::ast::{Env, Thunk, Value};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOp {
@@ -66,7 +66,33 @@ pub fn decode(mut stream: impl Iterator<Item = u8>) -> anyhow::Result<BinaryOp> 
 }
 
 impl BinaryOp {
-    pub fn eval(&self, lhs: &Expr, rhs: &Expr) -> anyhow::Result<Expr> {
-        todo!()
+    pub fn apply(&self, lhs: &Thunk, rhs: &Thunk, env: &Env) -> anyhow::Result<Value> {
+        match self {
+            BinaryOp::Add => todo!(),
+            BinaryOp::Sub => todo!(),
+            BinaryOp::Mul => todo!(),
+            BinaryOp::Div => todo!(),
+            BinaryOp::Mod => todo!(),
+            BinaryOp::Less => todo!(),
+            BinaryOp::Greater => todo!(),
+            BinaryOp::Equal => todo!(),
+            BinaryOp::Or => todo!(),
+            BinaryOp::And => todo!(),
+            BinaryOp::Concat => match (lhs.eval(env)?, rhs.eval(env)?) {
+                (Value::String(lhs), Value::String(rhs)) => Ok(format!("{lhs}{rhs}").into()),
+                (lhs, rhs) => bail!("Expected (String, String), got ({lhs:?}, {rhs:?})"),
+            },
+            BinaryOp::Take => todo!(),
+            BinaryOp::Drop => todo!(),
+            BinaryOp::Apply => match lhs.eval(env)? {
+                Value::Closure(mut env0, var, expr) => {
+                    env0.push((var, rhs.clone()));
+                    let ret = expr.eval(&env0)?;
+                    env0.pop();
+                    Ok(ret)
+                }
+                v => bail!("Expected closure: got {:?}", v),
+            },
+        }
     }
 }

@@ -46,6 +46,8 @@ pub enum Expr {
     Literal(Value),
     UnaryOp(UnaryOp, Thunk),
     BinaryOp(BinaryOp, Thunk, Thunk),
+    Lambda(i64, Thunk),
+    Var(i64),
 }
 
 impl From<Value> for Expr {
@@ -90,8 +92,11 @@ impl Expr {
                     stack.push(Expr::BinaryOp(o.clone(), x.into(), y.into()));
                 }
                 Token::If() => todo!(),
-                Token::Lambda(_) => todo!(),
-                Token::Variable(_) => todo!(),
+                &Token::Lambda(v) => {
+                    let body = stack.pop().context("No body for lambda")?;
+                    stack.push(Expr::Lambda(v, body.into()))
+                }
+                &Token::Variable(v) => stack.push(Expr::Var(v)),
             }
         }
         let expr = stack.pop().context("Empty expression")?;
@@ -104,16 +109,15 @@ impl Expr {
     pub fn eval(&self, env: &Env) -> anyhow::Result<Value> {
         match self {
             Expr::Literal(v) => Ok(v.clone()),
-            Expr::BinaryOp(BinaryOp::Apply, fun, arg) => match fun.eval(env)? {
-                Value::Closure(mut env0, var, expr) => {
-                    env0.push((var, arg.clone()));
-                    let ret = expr.eval(&env0)?;
-                    env0.pop();
-                    Ok(ret)
-                }
-                v => bail!("Expected closure: got {:?}", v),
-            },
-            _ => todo!(),
+            Expr::BinaryOp(o, lhs, rhs) => o.apply(lhs, rhs, env),
+            Expr::UnaryOp(o, e) => o.apply(e, env),
+            &Expr::Lambda(var, ref body) => Ok(Value::Closure(env.clone(), var, body.clone())),
+            &Expr::Var(var) => env
+                .iter()
+                .rev()
+                .find_map(|&(v, ref t)| (v == var).then(|| t.clone()))
+                .context("Undefined variable: {var}")?
+                .eval(env),
         }
     }
 }
@@ -143,11 +147,3 @@ impl From<String> for Value {
         Value::String(value)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn parse_
-// }

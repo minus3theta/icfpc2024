@@ -2,6 +2,10 @@ use std::fmt;
 
 use anyhow::{bail, Context, Ok};
 
+use crate::ast::{Env, Thunk, Value};
+
+use super::integers;
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnaryOp {
     // - Integer negation
@@ -12,6 +16,42 @@ pub enum UnaryOp {
     ToInt,
     // $ int-to-string: inverse of the above
     ToString,
+}
+
+impl UnaryOp {
+    pub fn apply(&self, e: &Thunk, env: &Env) -> anyhow::Result<Value> {
+        let value = e.eval(env)?;
+        match self {
+            UnaryOp::Neg => {
+                if let Value::Integer(i) = value {
+                    Ok((-i).into())
+                } else {
+                    bail!("Expected integer: got {value:?}")
+                }
+            }
+            UnaryOp::Not => {
+                if let Value::Boolean(b) = value {
+                    Ok((!b).into())
+                } else {
+                    bail!("Expected boolean: got {value:?}")
+                }
+            }
+            UnaryOp::ToInt => {
+                if let Value::String(s) = value {
+                    Ok(integers::decode(s.bytes())?.into())
+                } else {
+                    bail!("Expected string: got {value:?}")
+                }
+            }
+            UnaryOp::ToString => {
+                if let Value::Integer(i) = value {
+                    Ok(integers::encode(i)?.into())
+                } else {
+                    bail!("Expected integer: got {value:?}")
+                }
+            }
+        }
+    }
 }
 
 impl fmt::Display for UnaryOp {
