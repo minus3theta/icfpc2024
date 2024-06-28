@@ -12,6 +12,15 @@ pub enum Token {
     BinaryOp(BinaryOp),
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::String(s) => s.fmt(f),
+            _ => todo!(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnaryOp {}
 
@@ -41,6 +50,24 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
     }
 }
 
+pub fn encode(tokens: &[Token]) -> anyhow::Result<String> {
+    Ok(tokens
+        .iter()
+        .map(encode_token)
+        .collect::<Result<Vec<_>, _>>()?
+        .join(" "))
+}
+
+fn encode_token(token: &Token) -> anyhow::Result<String> {
+    match token {
+        Token::Boolean(_) => todo!(),
+        Token::Integer(_) => todo!(),
+        Token::String(s) => Ok(format!("S{}", strings::encode(s)?)),
+        Token::UnaryOp(_) => todo!(),
+        Token::BinaryOp(_) => todo!(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -57,6 +84,15 @@ mod tests {
     #[test]
     fn decode_1337() -> anyhow::Result<()> {
         assert_eq!(decode_token("I/6")?, Token::Integer(1337));
+        Ok(())
+    }
+
+    #[test]
+    fn encode_hello_world() -> anyhow::Result<()> {
+        assert_eq!(
+            encode(&[Token::String("Hello World!".into())])?,
+            "SB%,,/}Q/2,$_".to_owned()
+        );
         Ok(())
     }
 }
