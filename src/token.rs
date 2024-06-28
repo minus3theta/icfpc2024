@@ -1,5 +1,8 @@
 use anyhow::Context;
 
+use binary_op::BinaryOp;
+
+mod binary_op;
 mod integers;
 mod strings;
 
@@ -24,9 +27,6 @@ impl std::fmt::Display for Token {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnaryOp {}
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum BinaryOp {}
-
 pub fn decode_token_stream(s: &str) -> anyhow::Result<Vec<Token>> {
     s.split_ascii_whitespace().map(decode_token).collect()
 }
@@ -46,8 +46,10 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
             .context("Unexpected body after F")?),
         b'I' => integers::decode(bytes).map(Token::Integer),
         b'S' => strings::decode(bytes).map(Token::String),
+        b'B' => binary_op::decode(bytes).map(Token::BinaryOp),
         _ => Err(anyhow::anyhow!("Unknown token type")),
     }
+    // B. SF B$ B$ L" B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# L$ L# ? B= v# I" v" B. v" B$ v$ B- v# I" Sl I#,
 }
 
 pub fn encode(tokens: &[Token]) -> anyhow::Result<String> {
@@ -78,6 +80,13 @@ mod tests {
             decode_token("SB%,,/}Q/2,$_")?,
             Token::String("Hello World!".into())
         );
+        Ok(())
+    }
+
+    #[test]
+    fn decode_integer_addition() -> anyhow::Result<()> {
+        assert_eq!(decode_token("B+")?, Token::BinaryOp(BinaryOp::Add));
+        assert_eq!(decode_token("B-")?, Token::BinaryOp(BinaryOp::Sub));
         Ok(())
     }
 
