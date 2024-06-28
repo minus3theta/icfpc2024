@@ -15,6 +15,10 @@ pub enum UnaryOp {}
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOp {}
 
+pub fn decode_token_stream(s: &str) -> anyhow::Result<Vec<Token>> {
+    s.split_ascii_whitespace().map(decode_token).collect()
+}
+
 pub fn decode_token(s: &str) -> anyhow::Result<Token> {
     let mut bytes = s.bytes();
     match bytes.next().expect("Token is empty") {
