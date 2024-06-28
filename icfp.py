@@ -5,7 +5,6 @@ import json
 import re
 import subprocess
 import tempfile
-import click
 
 
 def parse_base94(s: str):
@@ -428,17 +427,6 @@ def parse_icfp(s):
     print("tokens:", [repr(token) for token in tokens])
     return make_ast(tokens)
 
-
-# @click.command()
-# @click.argument("file", type=click.File("r"))
-# def main(file):
-#     tokens = []
-#     for line in file:
-#         # s = input().strip()
-#         s = line.rstrip()
-#         if s == "":
-#             continue
-#         eval_icfp(s)
 
 
 def my_test(icfp_expr, expected):
