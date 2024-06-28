@@ -1,0 +1,14 @@
+{
+  "name": "visualizer",
+  "version": "0.1.0",
+  "files": [
+    "visualizer_bg.wasm",
+    "visualizer.js",
+    "visualizer.d.ts"
+  ],
+  "module": "visualizer.js",
+  "types": "visualizer.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
