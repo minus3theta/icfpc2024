@@ -1,4 +1,7 @@
-pub mod strings;
+use anyhow::Context;
+
+mod integers;
+mod strings;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Token {
@@ -21,7 +24,18 @@ pub fn decode_token_stream(s: &str) -> anyhow::Result<Vec<Token>> {
 
 pub fn decode_token(s: &str) -> anyhow::Result<Token> {
     let mut bytes = s.bytes();
-    match bytes.next().expect("Token is empty") {
+    match bytes.next().context("Token is empty")? {
+        b'T' => Ok(bytes
+            .next()
+            .is_none()
+            .then_some(Token::Boolean(true))
+            .context("Unexpected body after T")?),
+        b'F' => Ok(bytes
+            .next()
+            .is_none()
+            .then_some(Token::Boolean(false))
+            .context("Unexpected body after F")?),
+        b'I' => integers::decode(bytes).map(Token::Integer),
         b'S' => strings::decode(bytes).map(Token::String),
         _ => todo!(),
     }
@@ -37,6 +51,12 @@ mod tests {
             decode_token("SB%,,/}Q/2,$_")?,
             Token::String("Hello World!".into())
         );
+        Ok(())
+    }
+
+    #[test]
+    fn decode_1337() -> anyhow::Result<()> {
+        assert_eq!(decode_token("I/6")?, Token::Integer(1337));
         Ok(())
     }
 }
