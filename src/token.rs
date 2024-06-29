@@ -1,9 +1,6 @@
-use std::str::FromStr;
-
 use anyhow::{bail, Context};
 use num_bigint::BigInt;
 
-use itertools::Itertools;
 pub use binary_op::BinaryOp;
 pub use unary_op::UnaryOp;
 
@@ -89,7 +86,77 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
 }
 
 pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
-    // TODO: U$ の挙動が思ったものと違ったので現状動かない
+    if s.split_whitespace().last().unwrap().chars().all(|c| ['D', 'L', 'R', 'U'].contains(&c)) {
+        // lambdaman 用のエンコード
+        let len = s.split_whitespace().last().unwrap().len();
+        return Ok(vec![
+            Token::BinaryOp(BinaryOp::Concat),
+            Token::String(s[..s.len() - len].to_owned()),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Lambda(BigInt::from(1)),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Lambda(BigInt::from(2)),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Variable(BigInt::from(1)),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Variable(BigInt::from(2)),
+            Token::Variable(BigInt::from(2)),
+            Token::Lambda(BigInt::from(2)),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Variable(BigInt::from(1)),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Variable(BigInt::from(2)),
+            Token::Variable(BigInt::from(2)),
+            Token::Lambda(BigInt::from(3)),
+            Token::Lambda(BigInt::from(4)),
+            Token::If,
+            Token::BinaryOp(BinaryOp::Equal),
+            Token::Variable(BigInt::from(4)),
+            Token::Integer(BigInt::from(0)),
+            Token::String("".to_owned()),
+            Token::BinaryOp(BinaryOp::Concat),
+            Token::BinaryOp(BinaryOp::Apply),
+            Token::Variable(BigInt::from(3)),
+            Token::BinaryOp(BinaryOp::Div),
+            Token::Variable(BigInt::from(4)),
+            Token::Integer(BigInt::from(5)),
+            Token::If,
+            Token::BinaryOp(BinaryOp::Equal),
+            Token::BinaryOp(BinaryOp::Mod),
+            Token::Variable(BigInt::from(4)),
+            Token::Integer(BigInt::from(5)),
+            Token::Integer(BigInt::from(1)),
+            Token::String("D".to_owned()),
+            Token::If,
+            Token::BinaryOp(BinaryOp::Equal),
+            Token::BinaryOp(BinaryOp::Mod),
+            Token::Variable(BigInt::from(4)),
+            Token::Integer(BigInt::from(5)),
+            Token::Integer(BigInt::from(2)),
+            Token::String("L".to_owned()),
+            Token::If,
+            Token::BinaryOp(BinaryOp::Equal),
+            Token::BinaryOp(BinaryOp::Mod),
+            Token::Variable(BigInt::from(4)),
+            Token::Integer(BigInt::from(5)),
+            Token::Integer(BigInt::from(3)),
+            Token::String("R".to_owned()),
+            Token::String("U".to_owned()),
+            Token::Integer(s.split_whitespace().last().unwrap().chars().fold(BigInt::from(0), |acc, c| {
+                acc * 5 + match c {
+                    'D' => 1,
+                    'L' => 2,
+                    'R' => 3,
+                    'U' => 4,
+                    _ => unreachable!(),
+                }
+            })),
+        ]);
+    }
+    Ok(vec![Token::String(s.to_owned())])
+    /*
+    // spaceship に使えると思ったが、スコアには move の数が使われるので使えなかった…
     let tokens = s.chars().scan(false, |cum, c| {
             let next = c.is_numeric() && (*cum || c != '0');
             *cum = next;
@@ -152,6 +219,7 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
     }).collect_vec();
     let len = tokens.len();
     Ok(tokens.into_iter().enumerate().flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 })).collect_vec())
+    */
 }
 
 #[cfg(test)]
