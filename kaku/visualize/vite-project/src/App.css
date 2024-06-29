@@ -43,4 +43,54 @@
 
 textarea {
   font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+  width: 300px;
+  height: 450px;
+}
+
+input[type="range"] {
+  -webkit-appearance: none; /* 🚩これ無しだとスタイルがほぼ全く反映されないので注意 */
+  appearance: none;
+  cursor: pointer; /* カーソルを分かりやすく */
+  outline: none; /* スライダーのアウトラインは見た目がキツイので消す */
+  height: 14px; /* バーの高さ */
+  width: 70%; /* バーの幅 */
+  background: #8acdff; /* バーの背景色 */
+  border-radius: 10px; /* バーの両端の丸み */
+  border: solid 3px #dff1ff; /* バー周囲の線 */
+}
+
+table {
+  margin-left: auto;
+  margin-right: auto;
+  /* width: 100%;/* 表の幅 */
+  border-collapse: collapse;/* セルの枠線を重ねる */
+}
+th, td {
+  padding: 8px;/* 余白 */
+  border: dashed 1px #595959;/* 枠線の下線の太さと色 */
+}
+td {
+  /* padding: 0; */
+  width: 30px;
+  height: 30px;
+}
+/* tr:nth-child(even) {
+  background-color: #f2f2f2;
+} */
+tr:nth-of-type(odd) {
+  td:nth-of-type(odd) {
+    background-color: #f2f2f2;
+  }
+  td:nth-of-type(even) {
+    background-color: white;
+  }
+}
+
+tr:nth-of-type(even) {
+  td:nth-of-type(odd) {
+    background-color: white;
+  }
+  td:nth-of-type(even) {
+    background-color: #f2f2f2;
+  }
 }
