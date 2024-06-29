@@ -34,7 +34,7 @@ fn v3(v4: i64) -> i64 {
     match V3_CACHE.with_borrow(|cache| cache.get(&v4).cloned()) {
         Some(ret) => ret,
         None => {
-            let ret = v4.min(if v4 > 2 { v5(v4) } else { v4 });
+            let ret = v4.min(1 + if v4 > 2 { v5(v4) } else { v4 });
             V3_CACHE.with_borrow_mut(|cache| cache.insert(v4, ret));
             ret
         }

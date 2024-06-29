@@ -14,7 +14,7 @@ fn v5(v4: i64, v6: i64, v7: i64) -> i64 {
 }
 
 fn v3(v4: i64) -> i64 {
-    v4.min(if v4 > 2 { v5(v4, 2, v4) } else { v4 })
+    v4.min(1 + if v4 > 2 { v5(v4, 2, v4) } else { v4 })
 }
 
 fn main() {
