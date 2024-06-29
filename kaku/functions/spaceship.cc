@@ -65,21 +65,28 @@ vector<P> moves = {
 };
 
 P findNearest(vector<P> &ps, P c, P v) {
-  for (size_t i = 1; i < 100; i++) {
-    P a = c + v * i;
-    int d = (i+1) * i / 2;
-    vector<pair<int, P>> candidates;
-    for (auto &p : ps) {
-      if (a.distance(p) <= d) {
-        candidates.emplace_back(a.distance2(p), p);
-        return p;
-      }
-    }
-    if (!candidates.empty()) {
-      sort(candidates.begin(), candidates.end());
-      return candidates[0].second;
-    }
+  vector<pair<int, P>> candidates;
+  for (auto &p : ps) {
+    candidates.emplace_back(c.distance2(p), p);
+    return p;
   }
+  sort(candidates.begin(), candidates.end());
+  return candidates[0].second;
+  // for (size_t i = 1; i < 100; i++) {
+  //   P a = c + v * i;
+  //   int d = (i+1) * i / 2;
+  //   vector<pair<int, P>> candidates;
+  //   for (auto &p : ps) {
+  //     if (a.distance(p) <= d) {
+  //       candidates.emplace_back(c.distance2(p), p);
+  //       return p;
+  //     }
+  //   }
+  //   if (!candidates.empty()) {
+  //     sort(candidates.begin(), candidates.end());
+  //     return candidates[0].second;
+  //   }
+  // }
   throw "No nearest point found";
 }
 

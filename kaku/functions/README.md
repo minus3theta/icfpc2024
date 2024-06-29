@@ -12,7 +12,7 @@ export VCPKG_ROOT=$(pwd)/vcpkg
 ```
 cmake -S . -B .build -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake
 cmake --build .build
-.build/hello
+.build/main
 ```
 
 ## Run Locally with Docker:
