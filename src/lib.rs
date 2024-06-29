@@ -2,12 +2,13 @@ use std::env;
 
 use anyhow::bail;
 use ast::{Expr, Value};
+use token::Token;
 
 pub mod ast;
 pub mod token;
 pub const ENDPOINT: &str = "https://boundvariable.space/communicate";
 
-pub async fn send(encoded: String) -> anyhow::Result<String> {
+pub async fn send(encoded: String) -> anyhow::Result<Vec<Token>> {
     let response = reqwest::Client::new()
         .post(ENDPOINT)
         .bearer_auth(env::var("TOKEN")?)
@@ -21,9 +22,13 @@ pub async fn send(encoded: String) -> anyhow::Result<String> {
         )
     }
     let tokens = token::decode_token_stream(&result)?;
-    let eval_result = match Expr::from_tokens(&tokens)?.eval()? {
+    Ok(tokens)
+}
+
+pub fn eval_tokens(tokens: &[Token]) -> anyhow::Result<String> {
+    let result = match Expr::from_tokens(tokens)?.eval()? {
         Value::String(s) => s,
         value => value.to_string(),
     };
-    Ok(eval_result)
+    Ok(result)
 }

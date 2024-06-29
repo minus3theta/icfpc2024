@@ -14,10 +14,6 @@ struct IcfpcCli {
 #[derive(Subcommand)]
 enum Command {
     Submit {
-        /// Path to the input file
-        /// e.g. data/spaceship/spaceship1.in
-        #[arg(short, long)]
-        input: PathBuf,
         /// Path to the output file
         /// e.g. data/spaceship/spaceship1.kaku.out
         #[arg(short, long)]
@@ -39,20 +35,24 @@ enum Task {
     Efficieny,
 }
 
-async fn solve_spaceship(input: PathBuf, output: PathBuf) -> anyhow::Result<String> {
-    // strip .in from input file name
-    let problem_name = input
-        .file_stem()
-        .context("input file name is empty")?
-        .to_str()
-        .context("input file name is not valid utf-8")?;
+async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
+    let text = std::fs::read_to_string(output.clone())?;
+
+    let problem_file_name = output
+        .file_name()
+        .context("Expected file name")?
+        .to_string_lossy();
+    let problem_name = problem_file_name
+        .split('.')
+        .next()
+        .context("Expected file name")?;
     let output_file_name = output.to_string_lossy().to_string();
-    let text = std::fs::read_to_string(output)?;
     // TODO(togatoga): ここで頑張って短くする
     let cmd = format!("solve {problem_name} {text}");
     let request = token::encode(&[token::Token::String(cmd.to_owned())])?;
     eprintln!("Submitting '{output_file_name}' for '{problem_name}' to the server...");
-    let result = icfpc2024::send(request).await?;
+    let tokens = icfpc2024::send(request).await?;
+    let result = icfpc2024::eval_tokens(&tokens)?;
     Ok(result)
 }
 
@@ -60,13 +60,9 @@ async fn solve_spaceship(input: PathBuf, output: PathBuf) -> anyhow::Result<Stri
 async fn main() -> anyhow::Result<()> {
     let cli = IcfpcCli::parse();
     match cli.commands {
-        Command::Submit {
-            input,
-            output,
-            task,
-        } => match task {
+        Command::Submit { output, task } => match task {
             Task::Spaceship => {
-                let result = solve_spaceship(input, output).await?;
+                let result = solve_spaceship(output).await?;
                 println!("{}", result);
             }
             _ => unimplemented!(),
