@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
         if io::stdin().read_line(&mut input)? == 0 {
             break;
         }
-        let request = token::encode(&[token::Token::String(input.trim().to_owned())])?;
+        let request = token::encode_string(input.trim())?;
         let response = client
             .post(ENDPOINT)
             .bearer_auth(env::var("TOKEN")?)
