@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, str::FromStr};
 
 use anyhow::{bail, Context};
-use num_bigint::BigInt;
+use num_bigint::{BigInt, ToBigInt};
 
 use crate::token::{decode_token_stream, BinaryOp, Token, UnaryOp};
 
@@ -212,15 +212,15 @@ impl Expr {
 }
 
 thread_local! {
-    static COUNTER: RefCell<BigInt> = const { RefCell::new(BigInt::from(-1)) };
+    static COUNTER: RefCell<i64> = const { RefCell::new(-1) };
 }
 
 fn fresh() -> BigInt {
     COUNTER.with(|c| {
         let mut c = c.borrow_mut();
-        let var = c.clone();
-        *c = var.clone() - 1;
-        var
+        let var = *c;
+        *c = var - 1;
+        var.to_bigint().expect("Failed to convert i64 to BigInt")
     })
 }
 
