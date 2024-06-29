@@ -30,7 +30,9 @@ async fn main() -> anyhow::Result<()> {
                 return Err(err.into());
             }
         };
-        let request = token::encode_string(input.trim())?;
+        // TODO: 動くようになったら token::encode_string を使いたい
+        let request = token::encode(&[token::Token::String(input.trim().to_owned())])?;
+        println!("Sending: {request}");
         let response = client
             .post(ENDPOINT)
             .bearer_auth(env::var("TOKEN")?)

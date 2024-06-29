@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::{bail, Context};
 use num_bigint::BigInt;
 
@@ -76,10 +78,10 @@ pub fn encode(tokens: &[Token]) -> anyhow::Result<String> {
 fn encode_token(token: &Token) -> anyhow::Result<String> {
     match token {
         Token::Boolean(_) => todo!(),
-        Token::Integer(i) => Ok(integers::encode(*i)?),
+        Token::Integer(i) => Ok(format!("I{}", integers::encode(i.clone())?)),
         Token::String(s) => Ok(format!("S{}", strings::encode(s)?)),
-        Token::UnaryOp(_) => todo!(),
-        Token::BinaryOp(_) => todo!(),
+        Token::UnaryOp(op) => Ok(format!("U{}", unary_op::encode(op)?)),
+        Token::BinaryOp(op) => Ok(format!("B{}", binary_op::encode(op)?)),
         Token::If => todo!(),
         Token::Lambda(_) => todo!(),
         Token::Variable(_) => todo!(),
@@ -87,21 +89,33 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
 }
 
 pub fn encode_string(s: &str) -> anyhow::Result<String> {
-    encode(s.char_indices().chunk_by(|(_, c)| c.is_numeric()).into_iter().map(|(key, chunk)| {
+    // TODO: U$ の挙動が思ったものと違ったので現状動かない
+    let tokens = s.chars().scan(false, |cum, c| {
+            let next = c.is_numeric() && (*cum || c != '0');
+            *cum = next;
+            Some((c, next))
+        }).enumerate().chunk_by(|(_, (_, b))| *b).into_iter().map(|(key, chunk)| {
         let chunk_array = chunk.collect::<Vec<_>>();
         // 先頭と末尾では "B. " が不要になるので 8 桁分ボーナス
-        let len = chunk.count() + if chunk_array[0].0 == 0 { 8 } else { 0 } + if chunk_array[chunk_array.len() - 1].0 == s.len() - 1 { 8 } else { 0 };
+        let len = chunk_array.len() + if chunk_array[0].0 == 0 { 8 } else { 0 } + if chunk_array[chunk_array.len() - 1].0 == s.len() - 1 { 8 } else { 0 };
         // "B. B. S{} U$ I{} S{}" とエンコードするので増えた 13 文字以上の改善が得られる 27 桁以上連続しない場合は数値にしない
-        (chunk_array.into_iter().map(|(_, c)| c).collect::<String>(), key && len >= 27)
-    }).chunk_by(|(_, i)| i).into_iter().map(|(key, chunk)| {
-        if !!key {
-            Token::Integer(chunk.map(|(s, _)| s).join("").parse().unwrap())
+        (chunk_array.into_iter().map(|(_, (c, _))| c).collect::<String>(), key && len >= 27)
+    }).chunk_by(|(_, i)| *i).into_iter().map(|(key, chunk)| {
+        if key {
+            vec![
+                Token::BinaryOp(BinaryOp::Concat),
+                Token::Integer(BigInt::from_str(chunk.map(|(s, _)| s).join("").as_str()).unwrap()),
+            ]
         } else {
-            Token::String(chunk.map(|(s, _)| s).join(""))
+            vec![
+                Token::BinaryOp(BinaryOp::Concat),
+                Token::String(chunk.map(|(s, _)| s).join("")),
+            ]
         }
-    // TODO: encode に渡せる型にする！！！
-    }).collect::<Vec<_>())
-    // TODO: "B." と "U$" もつける！！！
+    }).collect_vec();
+    let len = tokens.len();
+    let v = tokens.into_iter().enumerate().flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 })).collect_vec();
+    encode(&v[..])
 }
 
 #[cfg(test)]
