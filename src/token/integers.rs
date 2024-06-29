@@ -27,6 +27,9 @@ pub fn encode(mut value: BigInt) -> anyhow::Result<String> {
         result.push((remainder + b'!') as char);
         value /= 94;
     }
+    if result.is_empty() {
+        result.push('!');
+    }
 
     // 逆順にする必要があるため、結果を反転
     let result: String = result.chars().rev().collect();

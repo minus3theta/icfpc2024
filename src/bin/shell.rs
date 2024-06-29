@@ -25,8 +25,8 @@ async fn main() -> anyhow::Result<()> {
                 return Err(err.into());
             }
         };
-
-        let request = token::encode(&[token::Token::String(input.trim().to_owned())])?;
+        let tokens = token::encode_string(input.trim())?;
+        let request = token::encode(&tokens)?;
         let tokens = icfpc2024::send(request).await?;
         let result = icfpc2024::eval_tokens(&tokens)?;
         println!("{}", result);
