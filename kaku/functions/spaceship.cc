@@ -34,6 +34,10 @@ struct P {
       return x == p.x && y == p.y;
   }
 
+  bool operator<(const P& p) const {
+    return x < p.x || (x == p.x && y < p.y);
+  }
+
   int distance(const P& p) const {
     return max(abs(x - p.x), abs(y - p.y));
   }
@@ -64,10 +68,16 @@ P findNearest(vector<P> &ps, P c, P v) {
   for (size_t i = 1; i < 100; i++) {
     P a = c + v * i;
     int d = (i+1) * i / 2;
+    vector<pair<int, P>> candidates;
     for (auto &p : ps) {
       if (a.distance(p) <= d) {
+        candidates.emplace_back(a.distance2(p), p);
         return p;
       }
+    }
+    if (!candidates.empty()) {
+      sort(candidates.begin(), candidates.end());
+      return candidates[0].second;
     }
   }
   throw "No nearest point found";
