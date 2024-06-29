@@ -37,9 +37,9 @@ impl fmt::Display for BinaryOp {
             BinaryOp::Or => "|",
             BinaryOp::And => "&",
             BinaryOp::Concat => ".",
-            BinaryOp::Take => "Take",
-            BinaryOp::Drop => "Drop",
-            BinaryOp::Apply => "Apply",
+            BinaryOp::Take => "T",
+            BinaryOp::Drop => "D",
+            BinaryOp::Apply => "$",
         };
         write!(f, "{}", op_str)
     }

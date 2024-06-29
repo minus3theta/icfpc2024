@@ -62,8 +62,8 @@ impl fmt::Display for UnaryOp {
         match self {
             UnaryOp::Neg => write!(f, "-"),
             UnaryOp::Not => write!(f, "!"),
-            UnaryOp::ToInt => write!(f, "ToInt"),
-            UnaryOp::ToString => write!(f, "ToString"),
+            UnaryOp::ToInt => write!(f, "#"),
+            UnaryOp::ToString => write!(f, "$"),
         }
     }
 }
