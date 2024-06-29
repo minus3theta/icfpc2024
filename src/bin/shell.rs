@@ -1,5 +1,6 @@
+use rustyline::error::ReadlineError;
+use rustyline::{CompletionType, Config, DefaultEditor, EditMode};
 use std::env;
-use std::io;
 
 use icfpc2024::token;
 
@@ -7,14 +8,27 @@ const ENDPOINT: &str = "https://boundvariable.space/communicate";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let mut input = String::new();
+    let mut rl = DefaultEditor::with_config(
+        Config::builder()
+            .history_ignore_space(true)
+            .completion_type(CompletionType::List)
+            .edit_mode(EditMode::Emacs)
+            .build(),
+    )?;
     let client = reqwest::Client::new();
     loop {
-        input.clear();
-        eprint!("❯ ");
-        if io::stdin().read_line(&mut input)? == 0 {
-            break;
-        }
+        let input = match rl.readline("❯ ") {
+            Ok(line) => {
+                rl.add_history_entry(line.as_str())?;
+                line
+            }
+            Err(ReadlineError::Eof) => {
+                break;
+            }
+            Err(err) => {
+                return Err(err.into());
+            }
+        };
         let request = token::encode_string(input.trim())?;
         let response = client
             .post(ENDPOINT)
