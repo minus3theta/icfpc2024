@@ -86,7 +86,12 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
 }
 
 pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
-    if s.split_whitespace().last().unwrap().chars().all(|c| ['D', 'L', 'R', 'U'].contains(&c)) {
+    if s.split_whitespace()
+        .last()
+        .unwrap()
+        .chars()
+        .all(|c| ['D', 'L', 'R', 'U'].contains(&c))
+    {
         // lambdaman 用のエンコード
         let len = s.split_whitespace().last().unwrap().len();
         return Ok(vec![
@@ -143,15 +148,19 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             Token::Integer(BigInt::from(3)),
             Token::String("R".to_owned()),
             Token::String("U".to_owned()),
-            Token::Integer(s.split_whitespace().last().unwrap().chars().fold(BigInt::from(0), |acc, c| {
-                acc * 5 + match c {
-                    'D' => 1,
-                    'L' => 2,
-                    'R' => 3,
-                    'U' => 4,
-                    _ => unreachable!(),
-                }
-            })),
+            Token::Integer(s.split_whitespace().last().unwrap().chars().fold(
+                BigInt::from(0),
+                |acc, c| {
+                    acc * 5
+                        + match c {
+                            'D' => 1,
+                            'L' => 2,
+                            'R' => 3,
+                            'U' => 4,
+                            _ => unreachable!(),
+                        }
+                },
+            )),
         ]);
     }
     Ok(vec![Token::String(s.to_owned())])
