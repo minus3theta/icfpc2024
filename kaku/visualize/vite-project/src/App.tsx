@@ -22,7 +22,7 @@ function App() {
       return
     }
     var current = applyAB(parsed, A, B)
-    var hist = [parsed]
+    var hist = [current]
     // while (true) {
     for (let i = 0; i < 10000; i++) {
       try {
@@ -78,9 +78,20 @@ function App() {
           setB(parseInt(b.value))
         }}>Submit</button>
       </form>
-      <input id='scale' type="range" min="0" max={history.length-1} step="1" defaultValue={scale} onChange={(e) => {
-          setScale(parseInt(e.target.value))
-        }} />
+      <div>
+        <button onClick={e => {
+          e.preventDefault()
+          setScale(Math.max(0, scale-1))
+        }}>Prev</button>
+        <input id='scale' type="range" min="0" max={history.length-1} step="1" value={scale} onChange={(e) => {
+            setScale(parseInt(e.target.value))
+          }} />
+        <button onClick={e => {
+          e.preventDefault()
+          setScale(Math.min(history.length-1, scale+1))
+        }}>Next</button>
+        <div>{scale} / {history.length-1}</div>
+      </div>
       {history.length > 0 ? (() => {
         const b = history[scale]
         const { cells } = b
@@ -102,7 +113,7 @@ function App() {
         </table>
           </div>
       })() : <></>}
-      <div>{output}</div>
+      <div>output: {output}</div>
     </>
   )
 }
