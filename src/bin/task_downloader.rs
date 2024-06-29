@@ -8,7 +8,7 @@ const ENDPOINT: &str = "https://boundvariable.space/communicate";
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let client = reqwest::Client::new();
-    let problems = ["lambdaman", "spaceship"];
+    let problems = ["lambdaman", "spaceship", "3d"];
     for problem in problems.iter() {
         eprintln!("Downloading problem: {}", problem);
         let problem_command = format!("get {}", problem);
