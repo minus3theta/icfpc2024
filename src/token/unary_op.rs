@@ -78,3 +78,12 @@ pub fn decode(mut stream: impl Iterator<Item = u8>) -> anyhow::Result<UnaryOp> {
         unk => bail!("Unexpected char: {unk}"),
     })
 }
+
+pub fn encode(op: &UnaryOp) -> anyhow::Result<String> {
+    Ok(match op {
+        UnaryOp::Neg => "-".to_string(),
+        UnaryOp::Not => "!".to_string(),
+        UnaryOp::ToInt => "#".to_string(),
+        UnaryOp::ToString => "$".to_string(),
+    })
+}

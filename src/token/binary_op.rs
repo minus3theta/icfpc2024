@@ -66,6 +66,25 @@ pub fn decode(mut stream: impl Iterator<Item = u8>) -> anyhow::Result<BinaryOp> 
     })
 }
 
+pub fn encode(op: &BinaryOp) -> anyhow::Result<String> {
+    match op {
+        BinaryOp::Add => Ok("+".to_string()),
+        BinaryOp::Sub => Ok("-".to_string()),
+        BinaryOp::Mul => Ok("*".to_string()),
+        BinaryOp::Div => Ok("/".to_string()),
+        BinaryOp::Mod => Ok("%".to_string()),
+        BinaryOp::Less => Ok("<".to_string()),
+        BinaryOp::Greater => Ok(">".to_string()),
+        BinaryOp::Equal => Ok("=".to_string()),
+        BinaryOp::Or => Ok("|".to_string()),
+        BinaryOp::And => Ok("&".to_string()),
+        BinaryOp::Concat => Ok(".".to_string()),
+        BinaryOp::Take => Ok("T".to_string()),
+        BinaryOp::Drop => Ok("D".to_string()),
+        BinaryOp::Apply => Ok("$".to_string()),
+    }
+}
+
 impl BinaryOp {
     fn int_op<R: Into<Value>>(
         lhs: Value,

@@ -47,9 +47,16 @@ async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
         .next()
         .context("Expected file name")?;
     let output_file_name = output.to_string_lossy().to_string();
-    // TODO(togatoga): ここで頑張って短くする
-    let cmd = format!("solve {problem_name} {text}");
-    let request = token::encode(&[token::Token::String(cmd.to_owned())])?;
+    println!("problem_name: {}", problem_name);
+    let tokens = [
+        token::Token::BinaryOp(token::BinaryOp::Concat),
+        token::Token::String(format!("solve {problem_name} ")),
+        // TODO(togatoga): Bigintを使ってうまく圧縮したい
+        token::Token::String(text),
+    ];
+
+    let request = token::encode(&tokens)?;
+    // println!("{}", request);
     eprintln!("Submitting '{output_file_name}' for '{problem_name}' to the server...");
     let tokens = icfpc2024::send(request).await?;
     let result = icfpc2024::eval_tokens(&tokens)?;
