@@ -164,12 +164,15 @@ pub fn compute_score_details(
     ),
 ) {
     let mut pos = (0, 0);
+    let mut vel = (0, 0);
     let mut pos_history = std::collections::VecDeque::with_capacity(10);
     let mut visited = std::collections::HashSet::new();
     pos_history.push_back(pos);
     for &dir in moves.iter().take(max_turn) {
-        pos.0 += dir as i32 % 3 - 1;
-        pos.1 += dir as i32 / 3 - 1;
+        vel.0 += dir as i32 % 3 - 1;
+        vel.1 += dir as i32 / 3 - 1;
+        pos.0 += vel.0;
+        pos.1 += vel.1;
         if input.target.contains(&pos) {
             visited.insert(pos);
         }
