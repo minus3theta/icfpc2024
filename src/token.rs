@@ -82,13 +82,13 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
         Token::String(s) => Ok(format!("S{}", strings::encode(s)?)),
         Token::UnaryOp(op) => Ok(format!("U{}", unary_op::encode(op)?)),
         Token::BinaryOp(op) => Ok(format!("B{}", binary_op::encode(op)?)),
-        Token::If => todo!(),
-        Token::Lambda(_) => todo!(),
-        Token::Variable(_) => todo!(),
+        Token::If => Ok("?".to_owned()),
+        Token::Lambda(v) => Ok(format!("L{}", integers::encode(v.clone())?)),
+        Token::Variable(v) => Ok(format!("v{}", integers::encode(v.clone())?)),
     }
 }
 
-pub fn encode_string(s: &str) -> anyhow::Result<String> {
+pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
     // TODO: U$ の挙動が思ったものと違ったので現状動かない
     let tokens = s.chars().scan(false, |cum, c| {
             let next = c.is_numeric() && (*cum || c != '0');
@@ -104,6 +104,43 @@ pub fn encode_string(s: &str) -> anyhow::Result<String> {
         if key {
             vec![
                 Token::BinaryOp(BinaryOp::Concat),
+                Token::UnaryOp(UnaryOp::ToString),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(2)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(2)),
+                Token::Variable(BigInt::from(2)),
+                Token::Lambda(BigInt::from(2)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(2)),
+                Token::Variable(BigInt::from(2)),
+                Token::Lambda(BigInt::from(3)),
+                Token::Lambda(BigInt::from(4)),
+                Token::If,
+                Token::BinaryOp(BinaryOp::Equal),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(0)),
+                Token::Integer(BigInt::from(0)),
+                Token::BinaryOp(BinaryOp::Add),
+                Token::BinaryOp(BinaryOp::Add),
+                Token::BinaryOp(BinaryOp::Mod),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(10)),
+                Token::Integer(BigInt::from(52)),
+                Token::BinaryOp(BinaryOp::Mul),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(3)),
+                Token::BinaryOp(BinaryOp::Div),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(10)),
+                Token::Integer(BigInt::from(94)),
                 Token::Integer(BigInt::from_str(chunk.map(|(s, _)| s).join("").as_str()).unwrap()),
             ]
         } else {
@@ -114,8 +151,7 @@ pub fn encode_string(s: &str) -> anyhow::Result<String> {
         }
     }).collect_vec();
     let len = tokens.len();
-    let v = tokens.into_iter().enumerate().flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 })).collect_vec();
-    encode(&v[..])
+    Ok(tokens.into_iter().enumerate().flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 })).collect_vec())
 }
 
 #[cfg(test)]
