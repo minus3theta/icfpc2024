@@ -6,7 +6,7 @@ use crate::token::{decode_token_stream, BinaryOp, Token, UnaryOp};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ThunkEnum {
-    Expr(Expr, Env),
+    Expr(Expr),
     Value(Value),
 }
 
@@ -19,21 +19,18 @@ impl From<Value> for ThunkEnum {
 impl std::fmt::Display for Thunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &*self.0.borrow() {
-            ThunkEnum::Expr(e, _) => e.fmt(f),
+            ThunkEnum::Expr(e) => e.fmt(f),
             ThunkEnum::Value(v) => v.fmt(f),
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Thunk(pub Rc<RefCell<ThunkEnum>>);
-
 impl Thunk {
     pub fn eval(&self) -> anyhow::Result<Value> {
         let mut t = self.0.borrow_mut();
         match &*t {
-            ThunkEnum::Expr(e, env) => {
-                let v = e.eval(env)?;
+            ThunkEnum::Expr(e) => {
+                let v = e.eval()?;
                 *t = v.clone().into();
                 Ok(v)
             }
@@ -41,26 +38,26 @@ impl Thunk {
         }
     }
 
-    pub fn with_env(&self, env: Env) -> Self {
+    pub fn subst(&self, var: i64, target: Thunk) -> Self {
         match &*self.0.borrow() {
-            ThunkEnum::Expr(e, _env) => {
-                dbg!(_env, &env);
-                ThunkEnum::Expr(e.clone(), env).into()
-            }
-            ThunkEnum::Value(_) => todo!(),
+            ThunkEnum::Expr(e) => e.subst(var, target),
+            ThunkEnum::Value(v) => v.clone().into(),
         }
     }
 }
 
-impl From<ThunkEnum> for Thunk {
-    fn from(value: ThunkEnum) -> Self {
-        Thunk(Rc::new(RefCell::new(value)))
-    }
-}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Thunk(Rc<RefCell<ThunkEnum>>);
 
 impl From<Expr> for Thunk {
     fn from(value: Expr) -> Self {
-        ThunkEnum::Expr(value, Default::default()).into()
+        Thunk(Rc::new(RefCell::new(ThunkEnum::Expr(value))))
+    }
+}
+
+impl From<Value> for Thunk {
+    fn from(value: Value) -> Self {
+        Thunk(Rc::new(RefCell::new(ThunkEnum::Value(value))))
     }
 }
 
@@ -162,27 +159,63 @@ impl Expr {
         Ok(expr)
     }
 
-    pub fn eval(&self, env: &Env) -> anyhow::Result<Value> {
+    pub fn eval(&self) -> anyhow::Result<Value> {
         match self {
             Expr::Literal(v) => Ok(v.clone()),
-            Expr::BinaryOp(o, lhs, rhs) => {
-                o.apply(&lhs.with_env(env.clone()), &rhs.with_env(env.clone()))
-            }
-            Expr::UnaryOp(o, e) => o.apply(&e.with_env(env.clone())),
+            Expr::BinaryOp(o, lhs, rhs) => o.apply(lhs, rhs),
+            Expr::UnaryOp(o, e) => o.apply(e),
             Expr::If(flag, t, f) => match flag.eval()? {
-                Value::Boolean(true) => t.with_env(env.clone()).eval(),
-                Value::Boolean(false) => f.with_env(env.clone()).eval(),
+                Value::Boolean(true) => t.eval(),
+                Value::Boolean(false) => f.eval(),
                 v => bail!("Expected boolean: got {v:?}"),
             },
-            &Expr::Lambda(var, ref body) => Ok(Value::Closure(var, body.with_env(env.clone()))),
-            &Expr::Var(var) => env
-                .iter()
-                .rev()
-                .find_map(|&(v, ref t)| (v == var).then(|| t.clone()))
-                .with_context(|| format!("Undefined variable: {var}"))?
-                .eval(),
+            &Expr::Lambda(var, ref body) => Ok(Value::Closure(var, body.clone())),
+            Expr::Var(_) => unreachable!(),
         }
     }
+
+    pub fn subst(&self, var: i64, target: Thunk) -> Thunk {
+        match self {
+            Expr::Literal(_) => self.clone().into(),
+            Expr::UnaryOp(o, e) => Expr::UnaryOp(o.clone(), e.subst(var, target)).into(),
+            Expr::BinaryOp(o, l, r) => Expr::BinaryOp(
+                o.clone(),
+                l.subst(var, target.clone()),
+                r.subst(var, target),
+            )
+            .into(),
+            Expr::If(c, t, e) => Expr::If(
+                c.subst(var, target.clone()),
+                t.subst(var, target.clone()),
+                e.subst(var, target),
+            )
+            .into(),
+            &Expr::Lambda(v, ref body) => {
+                let y = fresh();
+                Expr::Lambda(y, body.subst(v, Expr::Var(y).into()).subst(var, target)).into()
+            }
+            &Expr::Var(v) => {
+                if v == var {
+                    target
+                } else {
+                    Expr::Var(v).into()
+                }
+            }
+        }
+    }
+}
+
+thread_local! {
+    static COUNTER: RefCell<i64> = const { RefCell::new(-1) };
+}
+
+fn fresh() -> i64 {
+    COUNTER.with(|c| {
+        let mut c = c.borrow_mut();
+        let var = *c;
+        *c = var - 1;
+        var
+    })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

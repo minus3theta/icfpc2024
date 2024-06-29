@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
     let tokens = token::decode_token_stream(input.trim())?;
     let ast = Expr::from_tokens(&tokens)?;
     eprintln!("{}", &ast);
-    println!("{}", ast.eval(&vec![])?);
+    println!("{}", ast.eval()?);
 
     Ok(())
 }

@@ -2,7 +2,7 @@ use core::fmt;
 
 use anyhow::{bail, Context, Ok};
 
-use crate::ast::{Thunk, ThunkEnum, Value};
+use crate::ast::{Thunk, Value};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOp {
@@ -97,20 +97,7 @@ impl BinaryOp {
         let lhs = lhs.eval()?;
         match self {
             BinaryOp::Apply => match lhs {
-                Value::Closure(var, expr) => {
-                    let mut t = expr.0.borrow_mut();
-                    let ret = match &mut *t {
-                        ThunkEnum::Expr(e, env) => {
-                            env.push((var, rhs.clone()));
-                            let ret = e.eval(env)?;
-                            env.pop();
-                            ret
-                        }
-                        ThunkEnum::Value(v) => v.clone(),
-                    };
-                    *t = ret.clone().into();
-                    Ok(ret)
-                }
+                Value::Closure(var, expr) => expr.subst(var, rhs.clone()).eval(),
                 v => bail!("Expected closure: got {:?}", v),
             },
             op => {

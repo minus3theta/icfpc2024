@@ -25,6 +25,6 @@ use rstest::rstest;
 #[case::limits_ex(r#"B$ B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# L" L# ? B= v# I! I" B$ L$ B+ B$ v" v$ B$ v" v$ B- v# I" I%"#, 16.into())]
 fn eval(#[case] expr: &str, #[case] expected: Value) -> anyhow::Result<()> {
     let expr: Expr = expr.parse()?;
-    assert_eq!(expr.eval(&vec![])?, expected);
+    assert_eq!(expr.eval()?, expected);
     Ok(())
 }
