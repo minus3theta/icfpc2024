@@ -67,22 +67,22 @@ pub fn decode(mut stream: impl Iterator<Item = u8>) -> anyhow::Result<BinaryOp> 
 }
 
 pub fn encode(op: &BinaryOp) -> anyhow::Result<String> {
-    Ok(match op {
-        BinaryOp::Add => "+".to_string(),
-        BinaryOp::Sub => "-".to_string(),
-        BinaryOp::Mul => "*".to_string(),
-        BinaryOp::Div => "/".to_string(),
-        BinaryOp::Mod => "%".to_string(),
-        BinaryOp::Less => "<".to_string(),
-        BinaryOp::Greater => ">".to_string(),
-        BinaryOp::Equal => "=".to_string(),
-        BinaryOp::Or => "|".to_string(),
-        BinaryOp::And => "&".to_string(),
-        BinaryOp::Concat => ".".to_string(),
-        BinaryOp::Take => "T".to_string(),
-        BinaryOp::Drop => "D".to_string(),
-        BinaryOp::Apply => "$".to_string(),
-    })
+    match op {
+        BinaryOp::Add => Ok("+".to_string()),
+        BinaryOp::Sub => Ok("-".to_string()),
+        BinaryOp::Mul => Ok("*".to_string()),
+        BinaryOp::Div => Ok("/".to_string()),
+        BinaryOp::Mod => Ok("%".to_string()),
+        BinaryOp::Less => Ok("<".to_string()),
+        BinaryOp::Greater => Ok(">".to_string()),
+        BinaryOp::Equal => Ok("=".to_string()),
+        BinaryOp::Or => Ok("|".to_string()),
+        BinaryOp::And => Ok("&".to_string()),
+        BinaryOp::Concat => Ok(".".to_string()),
+        BinaryOp::Take => Ok("T".to_string()),
+        BinaryOp::Drop => Ok("D".to_string()),
+        BinaryOp::Apply => Ok("$".to_string()),
+    }
 }
 
 impl BinaryOp {

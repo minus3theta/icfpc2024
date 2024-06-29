@@ -1,11 +1,7 @@
-use icfpc2024::ast::{Expr, Value};
 use rustyline::error::ReadlineError;
 use rustyline::{CompletionType, Config, DefaultEditor, EditMode};
-use std::env;
 
 use icfpc2024::token;
-
-const ENDPOINT: &str = "https://boundvariable.space/communicate";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -16,7 +12,6 @@ async fn main() -> anyhow::Result<()> {
             .edit_mode(EditMode::Emacs)
             .build(),
     )?;
-    let client = reqwest::Client::new();
     loop {
         let input = match rl.readline("❯ ") {
             Ok(line) => {
@@ -33,18 +28,9 @@ async fn main() -> anyhow::Result<()> {
         // TODO: 動くようになったら token::encode_string を使いたい
         let request = token::encode(&[token::Token::String(input.trim().to_owned())])?;
         println!("Sending: {request}");
-        let response = client
-            .post(ENDPOINT)
-            .bearer_auth(env::var("TOKEN")?)
-            .body(request)
-            .send()
-            .await?;
-        let text = response.text().await?;
-        let tokens = token::decode_token_stream(&text)?;
-        match Expr::from_tokens(&tokens)?.eval()? {
-            Value::String(s) => println!("{s}"),
-            value => println!("{value}"),
-        }
+        let tokens = icfpc2024::send(request).await?;
+        let result = icfpc2024::eval_tokens(&tokens)?;
+        println!("{}", result);
     }
 
     Ok(())
