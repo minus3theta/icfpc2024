@@ -2,6 +2,7 @@ use std::env;
 
 use anyhow::bail;
 use ast::{Expr, Value};
+use dotenv::dotenv;
 use token::Token;
 
 pub mod ast;
@@ -9,6 +10,7 @@ pub mod token;
 pub const ENDPOINT: &str = "https://boundvariable.space/communicate";
 
 pub async fn send(encoded: String) -> anyhow::Result<Vec<Token>> {
+    dotenv().ok();
     let response = reqwest::Client::new()
         .post(ENDPOINT)
         .bearer_auth(env::var("TOKEN")?)
