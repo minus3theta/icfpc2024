@@ -2,7 +2,7 @@ use core::fmt;
 
 use anyhow::{bail, Context, Ok};
 
-use crate::ast::{Env, Thunk, Value};
+use crate::ast::{Thunk, ThunkEnum, Value};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOp {
@@ -90,23 +90,31 @@ impl BinaryOp {
         }
     }
 
-    pub fn apply(&self, lhs: &Thunk, rhs: &Thunk, env: &Env) -> anyhow::Result<Value> {
+    pub fn apply(&self, lhs: &Thunk, rhs: &Thunk) -> anyhow::Result<Value> {
         use BinaryOp::*;
         use Value::*;
 
-        let lhs = lhs.eval(env)?;
+        let lhs = lhs.eval()?;
         match self {
             BinaryOp::Apply => match lhs {
-                Value::Closure(mut env0, var, expr) => {
-                    env0.push((var, rhs.clone()));
-                    let ret = expr.eval(&env0)?;
-                    env0.pop();
+                Value::Closure(var, expr) => {
+                    let mut t = expr.0.borrow_mut();
+                    let ret = match &mut *t {
+                        ThunkEnum::Expr(e, env) => {
+                            env.push((var, rhs.clone()));
+                            let ret = e.eval(env)?;
+                            env.pop();
+                            ret
+                        }
+                        ThunkEnum::Value(v) => v.clone(),
+                    };
+                    *t = ret.clone().into();
                     Ok(ret)
                 }
                 v => bail!("Expected closure: got {:?}", v),
             },
             op => {
-                let rhs = rhs.eval(env)?;
+                let rhs = rhs.eval()?;
                 match op {
                     Add => Self::int_op(lhs, rhs, |x, y| x + y),
                     Sub => Self::int_op(lhs, rhs, |x, y| x - y),

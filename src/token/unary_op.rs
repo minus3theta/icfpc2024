@@ -3,7 +3,7 @@ use std::fmt;
 use anyhow::{bail, Context, Ok};
 
 use crate::{
-    ast::{Env, Thunk, Value},
+    ast::{Thunk, Value},
     token::strings,
 };
 
@@ -22,8 +22,8 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn apply(&self, e: &Thunk, env: &Env) -> anyhow::Result<Value> {
-        let value = e.eval(env)?;
+    pub fn apply(&self, e: &Thunk) -> anyhow::Result<Value> {
+        let value = e.eval()?;
         match self {
             UnaryOp::Neg => {
                 if let Value::Integer(i) = value {

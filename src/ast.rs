@@ -6,7 +6,7 @@ use crate::token::{decode_token_stream, BinaryOp, Token, UnaryOp};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ThunkEnum {
-    Expr(Expr),
+    Expr(Expr, Env),
     Value(Value),
 }
 
@@ -19,17 +19,20 @@ impl From<Value> for ThunkEnum {
 impl std::fmt::Display for Thunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &*self.0.borrow() {
-            ThunkEnum::Expr(e) => e.fmt(f),
+            ThunkEnum::Expr(e, _) => e.fmt(f),
             ThunkEnum::Value(v) => v.fmt(f),
         }
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Thunk(pub Rc<RefCell<ThunkEnum>>);
+
 impl Thunk {
-    pub fn eval(&self, env: &Env) -> anyhow::Result<Value> {
+    pub fn eval(&self) -> anyhow::Result<Value> {
         let mut t = self.0.borrow_mut();
         match &*t {
-            ThunkEnum::Expr(e) => {
+            ThunkEnum::Expr(e, env) => {
                 let v = e.eval(env)?;
                 *t = v.clone().into();
                 Ok(v)
@@ -37,14 +40,27 @@ impl Thunk {
             ThunkEnum::Value(v) => Ok(v.clone()),
         }
     }
+
+    pub fn with_env(&self, env: Env) -> Self {
+        match &*self.0.borrow() {
+            ThunkEnum::Expr(e, _env) => {
+                dbg!(_env, &env);
+                ThunkEnum::Expr(e.clone(), env).into()
+            }
+            ThunkEnum::Value(_) => todo!(),
+        }
+    }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Thunk(Rc<RefCell<ThunkEnum>>);
+impl From<ThunkEnum> for Thunk {
+    fn from(value: ThunkEnum) -> Self {
+        Thunk(Rc::new(RefCell::new(value)))
+    }
+}
 
 impl From<Expr> for Thunk {
     fn from(value: Expr) -> Self {
-        Thunk(Rc::new(RefCell::new(ThunkEnum::Expr(value))))
+        ThunkEnum::Expr(value, Default::default()).into()
     }
 }
 
@@ -149,20 +165,22 @@ impl Expr {
     pub fn eval(&self, env: &Env) -> anyhow::Result<Value> {
         match self {
             Expr::Literal(v) => Ok(v.clone()),
-            Expr::BinaryOp(o, lhs, rhs) => o.apply(lhs, rhs, env),
-            Expr::UnaryOp(o, e) => o.apply(e, env),
-            Expr::If(flag, t, f) => match flag.eval(env)? {
-                Value::Boolean(true) => t.eval(env),
-                Value::Boolean(false) => f.eval(env),
+            Expr::BinaryOp(o, lhs, rhs) => {
+                o.apply(&lhs.with_env(env.clone()), &rhs.with_env(env.clone()))
+            }
+            Expr::UnaryOp(o, e) => o.apply(&e.with_env(env.clone())),
+            Expr::If(flag, t, f) => match flag.eval()? {
+                Value::Boolean(true) => t.with_env(env.clone()).eval(),
+                Value::Boolean(false) => f.with_env(env.clone()).eval(),
                 v => bail!("Expected boolean: got {v:?}"),
             },
-            &Expr::Lambda(var, ref body) => Ok(Value::Closure(env.clone(), var, body.clone())),
+            &Expr::Lambda(var, ref body) => Ok(Value::Closure(var, body.with_env(env.clone()))),
             &Expr::Var(var) => env
                 .iter()
                 .rev()
                 .find_map(|&(v, ref t)| (v == var).then(|| t.clone()))
-                .context("Undefined variable: {var}")?
-                .eval(env),
+                .with_context(|| format!("Undefined variable: {var}"))?
+                .eval(),
         }
     }
 }
@@ -172,7 +190,7 @@ pub enum Value {
     Boolean(bool),
     Integer(i64),
     String(String),
-    Closure(Env, i64, Thunk),
+    Closure(i64, Thunk),
 }
 
 impl From<bool> for Value {
@@ -200,7 +218,7 @@ impl std::fmt::Display for Value {
             Boolean(b) => b.fmt(f),
             Integer(i) => i.fmt(f),
             String(s) => write!(f, r#""{s}""#),
-            Closure(_, var, body) => write!(f, "(λ v{var} . {body})"),
+            Closure(var, body) => write!(f, "(λ v{var} . {body})"),
         }
     }
 }
