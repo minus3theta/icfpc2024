@@ -1,6 +1,9 @@
 use std::io;
 
-use icfpc2024::{ast::Expr, token};
+use icfpc2024::{
+    ast::{Expr, Value},
+    token,
+};
 
 fn main() -> anyhow::Result<()> {
     let mut input = String::new();
@@ -9,7 +12,10 @@ fn main() -> anyhow::Result<()> {
     let tokens = token::decode_token_stream(input.trim())?;
     let ast = Expr::from_tokens(&tokens)?;
     eprintln!("{}", &ast);
-    println!("{}", ast.eval()?);
+    match ast.eval()? {
+        Value::String(s) => println!("{s}"),
+        value => println!("{value}"),
+    }
 
     Ok(())
 }
