@@ -26,7 +26,7 @@ fn solve_impl(
     anyhow::bail!("Failed to solve.")
 }
 
-fn solve(input: &String) -> anyhow::Result<String> {
+fn solve(input: &str) -> anyhow::Result<String> {
     let mut target = std::collections::HashSet::new();
     for l in input.lines() {
         let mut it = l.split_whitespace();

@@ -1,8 +1,8 @@
 use anyhow::{bail, Context};
 
-use binary_op::BinaryOp;
 use itertools::Itertools;
-use unary_op::UnaryOp;
+pub use binary_op::BinaryOp;
+pub use unary_op::UnaryOp;
 
 mod binary_op;
 mod integers;
@@ -16,7 +16,7 @@ pub enum Token {
     String(String),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
-    If(),
+    If,
     Lambda(i64),
     Variable(i64),
 }
@@ -29,7 +29,7 @@ impl std::fmt::Display for Token {
             Token::String(s) => s.fmt(f),
             Token::UnaryOp(op) => op.fmt(f),
             Token::BinaryOp(op) => op.fmt(f),
-            Token::If() => write!(f, "?"),
+            Token::If => write!(f, "?"),
             Token::Lambda(i) => write!(f, "L{i}"),
             Token::Variable(i) => write!(f, "v{i}"),
         }
@@ -57,7 +57,7 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
         b'U' => unary_op::decode(bytes).map(Token::UnaryOp),
         b'S' => strings::decode(bytes).map(Token::String),
         b'B' => binary_op::decode(bytes).map(Token::BinaryOp),
-        b'?' => Ok(Token::If()),
+        b'?' => Ok(Token::If),
         b'L' => integers::decode(bytes).map(Token::Lambda),
         b'v' => integers::decode(bytes).map(Token::Variable),
         unk => bail!("Unknown token: {}", unk as char),
@@ -79,7 +79,7 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
         Token::String(s) => Ok(format!("S{}", strings::encode(s)?)),
         Token::UnaryOp(_) => todo!(),
         Token::BinaryOp(_) => todo!(),
-        Token::If() => todo!(),
+        Token::If => todo!(),
         Token::Lambda(_) => todo!(),
         Token::Variable(_) => todo!(),
     }
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn decode_if() -> anyhow::Result<()> {
-        assert_eq!(decode_token("?")?, Token::If());
+        assert_eq!(decode_token("?")?, Token::If);
         Ok(())
     }
 
