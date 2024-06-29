@@ -1,6 +1,6 @@
 use num_bigint::BigInt;
 
-fn is_valid(board: &Vec<Vec<char>>, row: usize, col: usize, c: char) -> bool {
+fn is_valid(board: &[Vec<char>], row: usize, col: usize, c: char) -> bool {
     for i in 0..9 {
         if board[row][i] == c
             || board[i][col] == c
@@ -83,10 +83,10 @@ fn main() {
         println!("Sudoku solved:");
         print_board(&board);
         let mut res = BigInt::ZERO;
-        for i in 0..9 {
-            for j in 0..9 {
+        for b in board.iter() {
+            for &c in b.iter() {
                 res *= 9;
-                res += board[i][j] as u8 - b'1';
+                res += c as u8 - b'1';
             }
         }
         println!("Encoded: {}", res);
