@@ -1,6 +1,7 @@
 use core::fmt;
 
 use anyhow::{bail, Context, Ok};
+use num_bigint::BigInt;
 
 use crate::ast::{Thunk, Value};
 
@@ -69,7 +70,7 @@ impl BinaryOp {
     fn int_op<R: Into<Value>>(
         lhs: Value,
         rhs: Value,
-        fun: impl FnOnce(i64, i64) -> R,
+        fun: impl FnOnce(BigInt, BigInt) -> R,
     ) -> anyhow::Result<Value> {
         use Value::*;
         match (lhs, rhs) {
@@ -120,7 +121,7 @@ impl BinaryOp {
                     Take => match (lhs, rhs) {
                         (Integer(lhs), String(rhs)) => Ok(rhs
                             .chars()
-                            .take(lhs as usize)
+                            .take(usize::try_from(lhs)?)
                             .collect::<std::string::String>()
                             .into()),
                         (lhs, rhs) => bail!("Expected (Integer, String), got ({lhs:?}, {rhs:?})"),
@@ -128,7 +129,7 @@ impl BinaryOp {
                     Drop => match (lhs, rhs) {
                         (Integer(lhs), String(rhs)) => Ok(rhs
                             .chars()
-                            .skip(lhs as usize)
+                            .skip(usize::try_from(lhs)?)
                             .collect::<std::string::String>()
                             .into()),
                         (lhs, rhs) => bail!("Expected (Integer, String), got ({lhs:?}, {rhs:?})"),

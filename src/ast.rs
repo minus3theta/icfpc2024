@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc, str::FromStr};
 
 use anyhow::{bail, Context};
+use num_bigint::{BigInt, ToBigInt};
 
 use crate::token::{decode_token_stream, BinaryOp, Token, UnaryOp};
 
@@ -38,7 +39,7 @@ impl Thunk {
         }
     }
 
-    pub fn subst(&self, var: i64, target: Thunk) -> Self {
+    pub fn subst(&self, var: BigInt, target: Thunk) -> Self {
         match &*self.0.borrow() {
             ThunkEnum::Expr(e) => e.subst(var, target),
             ThunkEnum::Value(v) => v.clone().into(),
@@ -61,7 +62,7 @@ impl From<Value> for Thunk {
     }
 }
 
-pub type Env = Vec<(i64, Thunk)>;
+pub type Env = Vec<(BigInt, Thunk)>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expr {
@@ -69,8 +70,8 @@ pub enum Expr {
     UnaryOp(UnaryOp, Thunk),
     BinaryOp(BinaryOp, Thunk, Thunk),
     If(Thunk, Thunk, Thunk),
-    Lambda(i64, Thunk),
-    Var(i64),
+    Lambda(BigInt, Thunk),
+    Var(BigInt),
 }
 
 impl From<Value> for Expr {
@@ -85,8 +86,8 @@ impl From<bool> for Expr {
     }
 }
 
-impl From<i64> for Expr {
-    fn from(value: i64) -> Self {
+impl From<BigInt> for Expr {
+    fn from(value: BigInt) -> Self {
         Value::from(value).into()
     }
 }
@@ -128,7 +129,7 @@ impl Expr {
         for token in tokens.iter().rev() {
             match token {
                 &Token::Boolean(v) => stack.push(v.into()),
-                &Token::Integer(v) => stack.push(v.into()),
+                Token::Integer(v) => stack.push(v.clone().into()),
                 Token::String(v) => stack.push(v.clone().into()),
                 Token::UnaryOp(o) => {
                     let top = stack.pop().context("No operand for UnaryOp")?;
@@ -145,11 +146,11 @@ impl Expr {
                     let case_false = stack.pop().context("No operand for If")?;
                     stack.push(Expr::If(flag.into(), case_true.into(), case_false.into()));
                 }
-                &Token::Lambda(v) => {
+                Token::Lambda(v) => {
                     let body = stack.pop().context("No body for lambda")?;
-                    stack.push(Expr::Lambda(v, body.into()))
+                    stack.push(Expr::Lambda(v.clone(), body.into()))
                 }
-                &Token::Variable(v) => stack.push(Expr::Var(v)),
+                Token::Variable(v) => stack.push(Expr::Var(v.clone())),
             }
         }
         let expr = stack.pop().context("Empty expression")?;
@@ -169,36 +170,41 @@ impl Expr {
                 Value::Boolean(false) => f.eval(),
                 v => bail!("Expected boolean: got {v:?}"),
             },
-            &Expr::Lambda(var, ref body) => Ok(Value::Closure(var, body.clone())),
+            Expr::Lambda(var, ref body) => Ok(Value::Closure(var.clone(), body.clone())),
             Expr::Var(_) => unreachable!(),
         }
     }
 
-    pub fn subst(&self, var: i64, target: Thunk) -> Thunk {
+    pub fn subst(&self, var: BigInt, target: Thunk) -> Thunk {
         match self {
             Expr::Literal(_) => self.clone().into(),
             Expr::UnaryOp(o, e) => Expr::UnaryOp(o.clone(), e.subst(var, target)).into(),
             Expr::BinaryOp(o, l, r) => Expr::BinaryOp(
                 o.clone(),
-                l.subst(var, target.clone()),
+                l.subst(var.clone(), target.clone()),
                 r.subst(var, target),
             )
             .into(),
             Expr::If(c, t, e) => Expr::If(
-                c.subst(var, target.clone()),
-                t.subst(var, target.clone()),
+                c.subst(var.clone(), target.clone()),
+                t.subst(var.clone(), target.clone()),
                 e.subst(var, target),
             )
             .into(),
-            &Expr::Lambda(v, ref body) => {
+            Expr::Lambda(v, ref body) => {
                 let y = fresh();
-                Expr::Lambda(y, body.subst(v, Expr::Var(y).into()).subst(var, target)).into()
+                Expr::Lambda(
+                    y.clone(),
+                    body.subst(v.clone(), Expr::Var(y).into())
+                        .subst(var, target),
+                )
+                .into()
             }
-            &Expr::Var(v) => {
-                if v == var {
+            Expr::Var(v) => {
+                if *v == var {
                     target
                 } else {
-                    Expr::Var(v).into()
+                    Expr::Var(v.clone()).into()
                 }
             }
         }
@@ -209,21 +215,21 @@ thread_local! {
     static COUNTER: RefCell<i64> = const { RefCell::new(-1) };
 }
 
-fn fresh() -> i64 {
+fn fresh() -> BigInt {
     COUNTER.with(|c| {
         let mut c = c.borrow_mut();
         let var = *c;
         *c = var - 1;
-        var
+        var.to_bigint().expect("Failed to convert i64 to BigInt")
     })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Value {
     Boolean(bool),
-    Integer(i64),
+    Integer(BigInt),
     String(String),
-    Closure(i64, Thunk),
+    Closure(BigInt, Thunk),
 }
 
 impl From<bool> for Value {
@@ -232,8 +238,8 @@ impl From<bool> for Value {
     }
 }
 
-impl From<i64> for Value {
-    fn from(value: i64) -> Self {
+impl From<BigInt> for Value {
+    fn from(value: BigInt) -> Self {
         Value::Integer(value)
     }
 }
