@@ -1,12 +1,13 @@
 use anyhow::bail;
+use num_bigint::BigInt;
 
-pub fn decode(stream: impl Iterator<Item = u8>) -> anyhow::Result<i64> {
-    let mut ret = 0;
+pub fn decode(stream: impl Iterator<Item = u8>) -> anyhow::Result<BigInt> {
+    let mut ret = BigInt::ZERO;
     for b in stream {
         match b {
             b'!'..=b'~' => {
                 ret *= 94;
-                ret += (b - b'!') as i64;
+                ret += b - b'!';
             }
             _ => bail!("Unexpected char"),
         }
@@ -14,14 +15,15 @@ pub fn decode(stream: impl Iterator<Item = u8>) -> anyhow::Result<i64> {
     Ok(ret)
 }
 
-pub fn encode(mut value: i64) -> anyhow::Result<String> {
-    if value < 0 {
+pub fn encode(mut value: BigInt) -> anyhow::Result<String> {
+    // value < 0
+    if value < BigInt::ZERO {
         bail!("Value must be non-negative");
     }
 
     let mut result = String::new();
-    while value > 0 {
-        let remainder = (value % 94) as u8;
+    while value > BigInt::ZERO {
+        let remainder = u8::try_from(value.clone() % 94)?;
         result.push((remainder + b'!') as char);
         value /= 94;
     }
