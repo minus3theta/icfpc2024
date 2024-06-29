@@ -168,8 +168,8 @@ export const tickBinOpCell = (p: Point, op: BinOp, a: Cell, b: Cell): {add: {p: 
     case '/':
       if (a.type === 'Int' && b.type === 'Int') {
         return {add: [
-          {p: {x: p.x+1, y: p.y}, c: { type: 'Int', value: a.value / b.value }},
-          {p: {x: p.x, y: p.y+1}, c: { type: 'Int', value: a.value / b.value }}
+          {p: {x: p.x+1, y: p.y}, c: { type: 'Int', value: Math.floor(a.value / b.value) }},
+          {p: {x: p.x, y: p.y+1}, c: { type: 'Int', value: Math.floor(a.value / b.value) }}
         ], delete: [{x: p.x-1, y: p.y}, {x: p.x, y: p.y-1}], time: 0}
       }
       break;
@@ -333,7 +333,7 @@ export const tickBoard = (board: Board, histories: Board[]): {board: Board, outp
     if (time > histories.length) {
       throw new Error(`Time warp to a time that does not exist: ${time}`);
     }
-    const newBoard = {tick: board.tick - time, cells: new Map([...histories[histories.length - 1 - time].cells.entries()])}
+    const newBoard = {tick: board.tick - time, cells: new Map(findHistory(histories, board.tick - time).cells.entries())}
     times.get(time)?.forEach(newCell => {
       newBoard.cells.set(JSON.stringify({ x: newCell.p.x, y: newCell.p.y }), newCell.c)
     })
@@ -364,3 +364,13 @@ export const applyAB = (board: Board, a: number, b: number): Board => {
   })
   return { tick: board.tick, cells: newCells }
 }
+
+export const findHistory = (histories: Board[], tick: number): Board => {
+  for (const history of [...histories].reverse()) {
+    if (history.tick === tick) {
+      return history
+    }
+  }
+  throw new Error("History not found");
+}
+
