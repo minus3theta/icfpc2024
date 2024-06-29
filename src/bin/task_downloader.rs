@@ -1,25 +1,15 @@
-use std::env;
-
-use icfpc2024::token;
+use icfpc2024::{eval_tokens, send, token};
 use itertools::Itertools;
-
-const ENDPOINT: &str = "https://boundvariable.space/communicate";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = reqwest::Client::new();
     let problems = ["lambdaman", "spaceship", "3d"];
     for problem in problems.iter() {
         eprintln!("Downloading problem: {}", problem);
         let problem_command = format!("get {}", problem);
         let request = token::encode(&[token::Token::String(problem_command)])?;
-        let response = client
-            .post(ENDPOINT)
-            .bearer_auth(env::var("TOKEN")?)
-            .body(request)
-            .send()
-            .await?;
-        let text = response.text().await?;
+        let tokens = send(request).await?;
+        let text = eval_tokens(&tokens)?;
         let problem_statement = token::decode_token_stream(&text)?.into_iter().join("");
         for x in 1.. {
             // e.g. lambdaman1
@@ -30,13 +20,8 @@ async fn main() -> anyhow::Result<()> {
             eprintln!("Downloading task: {}", task);
             let task_command = format!("get {}", task);
             let request = token::encode(&[token::Token::String(task_command)])?;
-            let response = client
-                .post(ENDPOINT)
-                .bearer_auth(env::var("TOKEN")?)
-                .body(request)
-                .send()
-                .await?;
-            let text = response.text().await?;
+            let tokens = send(request).await?;
+            let text = eval_tokens(&tokens)?;
             // data/{problem}/{task}.raw
             // data/{problem}/{task}.in
             let task_raw_file = format!("data/{problem}/{task}.raw");
