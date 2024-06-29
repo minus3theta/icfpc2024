@@ -1,3 +1,4 @@
+use icfpc2024::ast::{Expr, Value};
 use rustyline::error::ReadlineError;
 use rustyline::{CompletionType, Config, DefaultEditor, EditMode};
 use std::env;
@@ -38,8 +39,10 @@ async fn main() -> anyhow::Result<()> {
             .send()
             .await?;
         let text = response.text().await?;
-        for token in &token::decode_token_stream(&text)? {
-            println!("{}", token);
+        let tokens = token::decode_token_stream(&text)?;
+        match Expr::from_tokens(&tokens)?.eval()? {
+            Value::String(s) => println!("{s}"),
+            value => println!("{value}"),
         }
     }
 
