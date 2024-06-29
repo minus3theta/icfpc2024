@@ -1,4 +1,5 @@
 use anyhow::{bail, Context};
+use num_bigint::BigInt;
 
 use itertools::Itertools;
 pub use binary_op::BinaryOp;
@@ -12,13 +13,13 @@ mod unary_op;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Token {
     Boolean(bool),
-    Integer(i64),
+    Integer(BigInt),
     String(String),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
     If,
-    Lambda(i64),
-    Variable(i64),
+    Lambda(BigInt),
+    Variable(BigInt),
 }
 
 impl std::fmt::Display for Token {
@@ -105,6 +106,8 @@ pub fn encode_string(s: &str) -> anyhow::Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     #[test]
@@ -131,19 +134,19 @@ mod tests {
 
     #[test]
     fn decode_lambda() -> anyhow::Result<()> {
-        assert_eq!(decode_token("L#")?, Token::Lambda(2));
+        assert_eq!(decode_token("L#")?, Token::Lambda(BigInt::from(2)));
         Ok(())
     }
 
     #[test]
     fn decode_variable() -> anyhow::Result<()> {
-        assert_eq!(decode_token("v\"")?, Token::Variable(1));
+        assert_eq!(decode_token("v\"")?, Token::Variable(BigInt::from(1)));
         Ok(())
     }
 
     #[test]
     fn decode_1337() -> anyhow::Result<()> {
-        assert_eq!(decode_token("I/6")?, Token::Integer(1337));
+        assert_eq!(decode_token("I/6")?, Token::Integer(BigInt::from(1337)));
         Ok(())
     }
 
@@ -158,9 +161,26 @@ mod tests {
 
     #[test]
     fn encode_language_test() -> anyhow::Result<()> {
-        let value = integers::encode(38798476154511)?;
+        let value = integers::encode(BigInt::from(38798476154511i64))?;
         let result = strings::decode(value.bytes())?;
         assert_eq!(result, "4w3s0m3");
+        Ok(())
+    }
+
+    #[test]
+    fn encode_decode_bigint() -> anyhow::Result<()> {
+        // 2**256
+        let value = BigInt::from_str(
+            "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+        )
+        .expect("Failed to parse BigInt");
+        let encoded = integers::encode(value.clone())?;
+        assert_eq!(
+            encoded.as_bytes(),
+            b"\"<VHiCBw9\"s6x'adSCTArinu6dOl9m&SMkR*`/=)"
+        );
+        let decoded = integers::decode(encoded.bytes())?;
+        assert_eq!(decoded, value);
         Ok(())
     }
 }

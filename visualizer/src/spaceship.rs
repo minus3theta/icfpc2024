@@ -128,7 +128,7 @@ const FIXED: [&'static str; 26] = [
     include_str!("../../data/spaceship/spaceship19.in"),
     include_str!("../../data/spaceship/spaceship20.in"),
     include_str!("../../data/spaceship/spaceship21.in"),
-    "",
+    include_str!("../../data/spaceship/spaceship22.in"),
     include_str!("../../data/spaceship/spaceship23.in"),
     include_str!("../../data/spaceship/spaceship24.in"),
     include_str!("../../data/spaceship/spaceship25.in"),
