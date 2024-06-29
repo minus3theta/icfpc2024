@@ -5,8 +5,6 @@ use std::env;
 
 use icfpc2024::token;
 
-const ENDPOINT: &str = "https://boundvariable.space/communicate";
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut rl = DefaultEditor::with_config(
@@ -33,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
 
         let request = token::encode(&[token::Token::String(input.trim().to_owned())])?;
         let response = client
-            .post(ENDPOINT)
+            .post(icfpc2024::ENDPOINT)
             .bearer_auth(env::var("TOKEN")?)
             .body(request)
             .send()
