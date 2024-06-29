@@ -225,8 +225,8 @@ fn lambdaman_get_max_turn(_input: String, _output: String) -> usize {
 }
 
 fn spaceship_get_max_turn(_input: String, _output: String) -> usize {
-    let input = lambdaman::parse_input(&_input);
-    lambdaman::parse_output(&input, &_output)
+    let input = spaceship::parse_input(&_input);
+    spaceship::parse_output(&input, &_output)
         .unwrap()
         .moves
         .len()
