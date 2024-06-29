@@ -75,10 +75,10 @@ pub fn encode(tokens: &[Token]) -> anyhow::Result<String> {
 fn encode_token(token: &Token) -> anyhow::Result<String> {
     match token {
         Token::Boolean(_) => todo!(),
-        Token::Integer(_) => todo!(),
+        Token::Integer(v) => Ok(format!("I{}", integers::encode(v.clone())?)),
         Token::String(s) => Ok(format!("S{}", strings::encode(s)?)),
-        Token::UnaryOp(_) => todo!(),
-        Token::BinaryOp(_) => todo!(),
+        Token::UnaryOp(op) => Ok(format!("U{}", unary_op::encode(op)?)),
+        Token::BinaryOp(op) => Ok(format!("B{}", binary_op::encode(op)?)),
         Token::If => todo!(),
         Token::Lambda(_) => todo!(),
         Token::Variable(_) => todo!(),
@@ -128,26 +128,9 @@ mod tests {
     #[test]
     fn decode_1337() -> anyhow::Result<()> {
         assert_eq!(decode_token("I/6")?, Token::Integer(BigInt::from(1337)));
+        assert_eq!(decode_token("I$WD")?, Token::Integer(BigInt::from(31619)));
         Ok(())
     }
-
-    #[test]
-    fn encode_hello_world() -> anyhow::Result<()> {
-        assert_eq!(
-            encode(&[Token::String("Hello World!".into())])?,
-            "SB%,,/}Q/2,$_".to_owned()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn encode_language_test() -> anyhow::Result<()> {
-        let value = integers::encode(BigInt::from(38798476154511i64))?;
-        let result = strings::decode(value.bytes())?;
-        assert_eq!(result, "4w3s0m3");
-        Ok(())
-    }
-
     #[test]
     fn encode_decode_bigint() -> anyhow::Result<()> {
         // 2**256
@@ -162,6 +145,27 @@ mod tests {
         );
         let decoded = integers::decode(encoded.bytes())?;
         assert_eq!(decoded, value);
+        Ok(())
+    }
+
+    #[test]
+    fn encode_decode_hello_world() -> anyhow::Result<()> {
+        assert_eq!(
+            encode(&[Token::String("Hello World!".into())])?,
+            "SB%,,/}Q/2,$_".to_owned()
+        );
+        assert_eq!(
+            decode_token("SB%,,/}Q/2,$_")?,
+            Token::String("Hello World!".into())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn encode_language_test() -> anyhow::Result<()> {
+        let value = integers::encode(BigInt::from(38798476154511i64))?;
+        let result = strings::decode(value.bytes())?;
+        assert_eq!(result, "4w3s0m3");
         Ok(())
     }
 }
