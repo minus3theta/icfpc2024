@@ -93,6 +93,7 @@ function App() {
         }}>Next</button>
         <div>{scale} / {history.length-1}</div>
       </div>
+      <div>output: {output}</div>
       {history.length > 0 ? (() => {
         const b = history[scale]
         const { cells } = b
