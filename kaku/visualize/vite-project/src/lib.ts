@@ -167,17 +167,18 @@ export const tickBinOpCell = (p: Point, op: BinOp, a: Cell, b: Cell): {add: {p: 
       break;
     case '/':
       if (a.type === 'Int' && b.type === 'Int') {
+        const floor = (n: number) => (0 < n) ?  Math.floor(n) : Math.ceil(n);
         return {add: [
-          {p: {x: p.x+1, y: p.y}, c: { type: 'Int', value: Math.floor(a.value / b.value) }},
-          {p: {x: p.x, y: p.y+1}, c: { type: 'Int', value: Math.floor(a.value / b.value) }}
+          {p: {x: p.x+1, y: p.y}, c: { type: 'Int', value: floor(a.value / b.value) }},
+          {p: {x: p.x, y: p.y+1}, c: { type: 'Int', value: floor(a.value / b.value) }}
         ], delete: [{x: p.x-1, y: p.y}, {x: p.x, y: p.y-1}], time: 0}
       }
       break;
     case '%':
       if (a.type === 'Int' && b.type === 'Int') {
         return {add: [
-          {p: {x: p.x+1, y: p.y}, c: { type: 'Int', value: a.value % b.value }},
-          {p: {x: p.x, y: p.y+1}, c: { type: 'Int', value: a.value % b.value }}
+          {p: {x: p.x+1, y: p.y}, c: { type: 'Int', value: a.value % Math.abs(b.value) }},
+          {p: {x: p.x, y: p.y+1}, c: { type: 'Int', value: a.value % Math.abs(b.value) }}
         ], delete: [{x: p.x-1, y: p.y}, {x: p.x, y: p.y-1}], time: 0}
       }
       break;
