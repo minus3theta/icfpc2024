@@ -3,13 +3,17 @@
 
 #define NDEBUG
 
-#include <bits/stdc++.h>
+#include <tuple>
+#include <cassert>
 #include <queue>
 #include <map>
 #include <set>
 #include <vector>
 #include <string>
 #include <iostream>
+#include <numeric>
+#include <functional>
+#include <chrono>
 
 using namespace std;
 
@@ -187,30 +191,12 @@ private:
 XorShift rnd(1234567891);
 
 //------------------------------------------------------------------------------
-map<pair<int,int>, uint32_t> target_hash;
-map<pair<int,int>, int> target_idx;
-vector<pair<int,int>> idx_to_target;
-
 struct Input {
-    set<pair<int, int>> target;
-    bool has_origin = false;
-
+    vector<pair<int, int>> target;
     void input() {
         int x, y;
-        target_idx[make_pair(0,0)] = 0;
-        idx_to_target.push_back(make_pair(0, 0));
         while(cin >> x >> y){
-            if(x == 0 && y == 0){
-                has_origin = true;
-                continue;
-            }
-            auto p = make_pair(x, y);
-            if(target.count(p)) continue;
-            target.insert(p);
-            target_hash[p] = rnd();
-            int s = target_idx.size();
-            target_idx[p] = s;
-            idx_to_target.push_back(p);
+            target.emplace_back(x, y);
         }
     }
 };
@@ -231,13 +217,13 @@ private:
 };
 
 //------------------------------------------------------------------------------
-vector<pair<int, string>> small_moves[13][200];
+vector<pair<int, string>> small_moves[30][1000];
 
 void make_small_moves(){
     auto qu = queue<pair<pair<int, int>, string>>();
     qu.push({{0, 0}, ""});
 
-    for(int i=0;i<13;i++){
+    for(int i=0;i<30;i++){
         auto visited = set<pair<int, int>>();
         auto next_qu = queue<pair<pair<int, int>, string>>();
         while(!qu.empty()){
@@ -249,7 +235,7 @@ void make_small_moves(){
                 visited.insert({np, nv});
                 string ns = s;
                 ns.push_back('1' + dv);
-                small_moves[i][np + 100].push_back({nv + 100, ns});
+                small_moves[i][np + 500].push_back({nv + 100, ns});
                 next_qu.push({{np, nv}, ns});
             }
         }
@@ -324,39 +310,29 @@ struct HashMap {
         vector<pair<Key,T>> data_;
 };
 
-using Hash = uint64_t;
+using Hash = uint32_t;
 
-inline Hash calc_hash(int pos_x, int pos_y, int vel_x, int vel_y, set<pair<int,int>>& target, pair<int,int> pass = make_pair(0, 0)) {
-    long long a = (long long)target_idx[make_pair(pos_x, pos_y)] << 32;
-    for(auto s : target){
-        if(s == pass) continue;
-        a ^= target_hash[s];
-    }
-    long long b = (1LL << 32) * vel_x + vel_y;
-    return a^b;
+inline Hash calc_hash(int vel_x, int vel_y) {
+    return max(0, vel_x + 10000) * (1 << 16) + max(0, vel_y + 10000);
 }
 
 // 状態遷移を行うために必要な情報
 // メモリ使用量をできるだけ小さくしてください
 struct Action {
-    int32_t pidx0;
-    int32_t pidx1;
     int32_t vdif0;
     int32_t vdif1;
 
-    Action(int _pidx0, int _pidx1, int _vdif0, int _vdif1){
-        pidx0 = _pidx0;
-        pidx1 = _pidx1;
+    Action(int _vdif0, int _vdif1){
         vdif0 = _vdif0;
         vdif1 = _vdif1;
     }
 
-    tuple<int,int,int,int> decode() const {
-        return {pidx0, pidx1, vdif0, vdif1};
+    tuple<int,int> decode() const {
+        return {vdif0, vdif1};
     }
 
     bool operator==(const Action& other) const {
-        return pidx0 == other.pidx0 && pidx1 == other.pidx1 && vdif0 == other.vdif0 && vdif1 == other.vdif1;
+        return vdif0 == other.vdif0 && vdif1 == other.vdif1;
     }
 };
 
@@ -533,13 +509,13 @@ class State {
     public:
         explicit State(const Input& input) {
             m_target = input.target;
-            m_pos = make_pair(0, 0);
+            m_pos_idx = 0;
             m_vel = make_pair(0, 0);
         }
 
         // EvaluatorとHashの初期値を返す
         pair<Evaluator,Hash> make_initial_node() {
-            return {Evaluator(0), calc_hash(m_pos.first, m_pos.second, m_vel.first, m_vel.second, m_target)};
+            return {Evaluator(0), calc_hash(m_vel.first, m_vel.second)};
         }
 
         // 次の状態候補を全てselectorに追加する
@@ -548,151 +524,102 @@ class State {
         //   hash      : 今のハッシュ値
         //   parent    : 今のノードID（次のノードにとって親となる）
         void expand(const Evaluator& evaluator, Hash hash, int parent, Selector& selector) {
-            const int cur_pos_idx = target_idx[m_pos];
-            int find_idx = 13;
-            for(int i=0;i<13;i++){
-                bool find = false;
-                for(auto next_pos : m_target){
-                    int pos_dif0 = next_pos.first - m_pos.first - (i+1) * m_vel.first;
-                    int pos_dif1 = next_pos.second - m_pos.second - (i+1) * m_vel.second;
-                    if(abs(pos_dif0) > 100 || abs(pos_dif1) > 100) continue;
-                    if(small_moves[i][pos_dif0 + 100].empty()) continue;
-                    if(small_moves[i][pos_dif1 + 100].empty()) continue;
-                    for(auto [p0, s0] : small_moves[i][pos_dif0 + 100]){
-                        for(auto [p1, s1] : small_moves[i][pos_dif1 + 100]){
-                            int min_x = 100000000;
-                            int max_x = -100000000;
-                            int min_y = 100000000;
-                            int max_y = -100000000;
-                            for(auto [x, y] : m_target){
-                                if(x == next_pos.first && y == next_pos.second) continue;
-                                min_x = min(min_x, x);
-                                max_x = max(max_x, x);
-                                min_y = min(min_y, y);
-                                max_y = max(max_y, y);
-                            }
-                            if(m_target.size() == 1){
-                                min_x = max_x;
-                                min_y = max_y;
-                            }
-                            auto cost = evaluator.evaluate() % (1LL << 32) + i * (1LL << 32) + (max_x - min_x) + (max_y - min_y);
-                            selector.push(Candidate(Action(cur_pos_idx, target_idx[next_pos], p0-100, p1-100), Evaluator(cost), calc_hash(cur_pos_idx, target_idx[next_pos], m_vel.first + p0 - 100, m_vel.second + p1 - 100, m_target, next_pos), parent), false);
-                            find = true;
-                        }
+            const auto pos = m_pos_idx > 0 ? m_target[m_pos_idx-1] : make_pair(0, 0);
+            const auto& next_pos = m_target[m_pos_idx];
+            bool find = false;
+            for(int i=0;i<30;i++){
+                int pos_dif0 = next_pos.first - pos.first - (i+1) * m_vel.first;
+                int pos_dif1 = next_pos.second - pos.second - (i+1) * m_vel.second;
+                if(abs(pos_dif0) > 500 || abs(pos_dif1) > 500) continue;
+                if(small_moves[i][pos_dif0 + 500].empty()) continue;
+                if(small_moves[i][pos_dif1 + 500].empty()) continue;
+                for(auto [p0, s0] : small_moves[i][pos_dif0 + 500]){
+                    for(auto [p1, s1] : small_moves[i][pos_dif1 + 500]){
+                        auto cost = evaluator.evaluate() + i + 1;
+                        selector.push(Candidate(Action(p0-100, p1-100), Evaluator(cost), calc_hash(m_vel.first + p0 - 100, m_vel.second + p1 - 100), parent), false);
+                        find = true;
                     }
                 }
-                if(find){
-                    find_idx = min(find_idx, i);
-                }
-                if(i == find_idx+3) return;
             }
-            if(find_idx != 13) return;
-            int min_step = 1000000000;
-            int cnt = 0;
-            for(auto next_pos : m_target){
-                // ++cnt;
-                // cerr << "cnt = " << cnt << " " << min_step << endl << "\r";
-                // if(cnt == 10) break;
-                auto cur_pos = m_pos;
-                auto cur_vel = m_vel;
-                int step = 0;
-                while(cur_pos != next_pos){
-                    ++step;
-                    if(step > min_step) break;
-                    long long remain0 = next_pos.first - cur_pos.first;
-                    long long remain1 = next_pos.second - cur_pos.second;
-                    if(remain0 * cur_vel.first < 0){
+            if(find) return;
+            auto cur_pos = pos;
+            auto cur_vel = m_vel;
+            int step = 0;
+            while(cur_pos != next_pos){
+                ++step;
+                long long remain0 = next_pos.first - cur_pos.first;
+                long long remain1 = next_pos.second - cur_pos.second;
+                if(remain0 * cur_vel.first < 0){
+                    cur_vel.first += (cur_vel.first > 0 ? -1 : 1);
+                } else if(remain0 == 0){
+                    if(cur_vel.first != 0){
                         cur_vel.first += (cur_vel.first > 0 ? -1 : 1);
-                    } else if(remain0 == 0){
-                        if(cur_vel.first != 0){
-                            cur_vel.first += (cur_vel.first > 0 ? -1 : 1);
-                        }
-                    } else {
-                        long long remain = abs(remain0);
-                        long long v = abs(cur_vel.first);
-                        bool ok = false;
-                        for(int i=1;i>=0;i--){
-                            if(remain >= (v + i + 1) * (v + i) / 2){
-                                cur_vel.first += (remain0 > 0 ? i : -i);
-                                ok = true;
-                                break;
-                            }
-                        }
-                        if(!ok){
-                            cur_vel.first += (remain0 > 0 ? -1 : 1);
+                    }
+                } else {
+                    long long remain = abs(remain0);
+                    long long v = abs(cur_vel.first);
+                    bool ok = false;
+                    for(int i=1;i>=0;i--){
+                        if(remain >= (v + i + 1) * (v + i) / 2){
+                            cur_vel.first += (remain0 > 0 ? i : -i);
+                            ok = true;
+                            break;
                         }
                     }
-                    if(remain1 * cur_vel.second < 0){
+                    if(!ok){
+                        cur_vel.first += (remain0 > 0 ? -1 : 1);
+                    }
+                }
+                if(remain1 * cur_vel.second < 0){
+                    cur_vel.second += (cur_vel.second > 0 ? -1 : 1);
+                } else if(remain1 == 0){
+                    if(cur_vel.second != 0){
                         cur_vel.second += (cur_vel.second > 0 ? -1 : 1);
-                    } else if(remain1 == 0){
-                        if(cur_vel.second != 0){
-                            cur_vel.second += (cur_vel.second > 0 ? -1 : 1);
-                        }
-                    } else {
-                        long long remain = abs(remain1);
-                        long long v = abs(cur_vel.second);
-                        bool ok = false;
-                        for(int i=1;i>=0;i--){
-                            if(remain >= (v + i + 1) * (v + i) / 2){
-                                cur_vel.second += (remain1 > 0 ? i : -i);
-                                ok = true;
-                                break;
-                            }
-                        }
-                        if(!ok){
-                            cur_vel.second += (remain1 > 0 ? -1 : 1);
+                    }
+                } else {
+                    long long remain = abs(remain1);
+                    long long v = abs(cur_vel.second);
+                    bool ok = false;
+                    for(int i=1;i>=0;i--){
+                        if(remain >= (v + i + 1) * (v + i) / 2){
+                            cur_vel.second += (remain1 > 0 ? i : -i);
+                            ok = true;
+                            break;
                         }
                     }
-                    cur_pos.first += cur_vel.first;
-                    cur_pos.second += cur_vel.second;
+                    if(!ok){
+                        cur_vel.second += (remain1 > 0 ? -1 : 1);
+                    }
                 }
-                if(cur_pos == next_pos){
-                    min_step = step;
-                    int min_x = 100000000;
-                    int max_x = -100000000;
-                    int min_y = 100000000;
-                    int max_y = -100000000;
-                    for(auto [x, y] : m_target){
-                        if(x == next_pos.first && y == next_pos.second) continue;
-                        min_x = min(min_x, x);
-                        max_x = max(max_x, x);
-                        min_y = min(min_y, y);
-                        max_y = max(max_y, y);
-                    }
-                    if(m_target.size() == 1){
-                        min_x = max_x;
-                        min_y = max_y;
-                    }
-                    auto cost = evaluator.evaluate() % (1LL << 32) + step * (1LL << 32) + (max_x - min_x) + (max_y - min_y);
-                    selector.push(Candidate(Action(cur_pos_idx, target_idx[next_pos], cur_vel.first - m_vel.first, cur_vel.second - m_vel.second), Evaluator(cost), calc_hash(cur_pos_idx, target_idx[next_pos], cur_vel.first, cur_vel.second, m_target, next_pos), parent), false);
-                }
+                cur_pos.first += cur_vel.first;
+                cur_pos.second += cur_vel.second;
+            }
+            if(cur_pos == next_pos){
+                auto cost = evaluator.evaluate() + step;
+                selector.push(Candidate(Action(cur_vel.first - m_vel.first, cur_vel.second - m_vel.second), Evaluator(cost), calc_hash(cur_vel.first, cur_vel.second), parent), false);
             }
         }
 
         // actionを実行して次の状態に遷移する
         void move_forward(Action action) {
-            auto [p0, p1, vd0, vd1] = action.decode();
-            m_pos.first = idx_to_target[p1].first;
-            m_pos.second = idx_to_target[p1].second;
+            auto [vd0, vd1] = action.decode();
+            ++m_pos_idx;
             m_vel.first += vd0;
             m_vel.second += vd1;
-            m_target.erase(m_pos);
         }
 
         // actionを実行する前の状態に遷移する
         // 今の状態は、親からactionを実行して遷移した状態である
         void move_backward(Action action) {
-            auto [p0, p1, vd0, vd1] = action.decode();
-            m_target.insert(idx_to_target[p1]);
-            m_pos.first = idx_to_target[p0].first;
-            m_pos.second = idx_to_target[p0].second;
+            auto [vd0, vd1] = action.decode();
+            --m_pos_idx;
             m_vel.first -= vd0;
             m_vel.second -= vd1;
         }
 
     private:
-        set<pair<int, int>> m_target;
-        pair<int, int> m_pos;
+        vector<pair<int, int>> m_target;
+        int m_pos_idx;
         pair<int, int> m_vel;
 };
 
@@ -872,7 +799,7 @@ struct Solver {
         input(input) {}
 
     void solve(const Timer& timer) {
-        size_t beam_width = 50000;
+        size_t beam_width = 1000;
         size_t tour_capacity = 30 * beam_width;
         uint32_t hash_map_capacity = 32 * 30 * beam_width;
         beam_search::Config config = {
@@ -887,24 +814,21 @@ struct Solver {
 
     void print() const {
         auto pos = make_pair(0, 0);
+        int pos_idx = 0;
         auto vel = make_pair(0, 0);
         int length = 0;
-        if(input.has_origin){
-            ++length;
-            cout << 5;
-        }
         for (beam_search::Action action : output) {
-            auto [p0, p1, vd0, vd1] = action.decode();
+            auto [vd0, vd1] = action.decode();
             bool find = false;
-            const auto next_pos = idx_to_target[p1];
-            for(int i=0;i<13;i++){
+            const auto next_pos = input.target[pos_idx++];
+            for(int i=0;i<30;i++){
                 int pos_dif0 = next_pos.first - pos.first - (i+1) * vel.first;
                 int pos_dif1 = next_pos.second - pos.second - (i+1) * vel.second;
-                if(abs(pos_dif0) > 100 || abs(pos_dif1) > 100) continue;
-                if(small_moves[i][pos_dif0 + 100].empty()) continue;
-                if(small_moves[i][pos_dif1 + 100].empty()) continue;
-                for(auto [p0, s0] : small_moves[i][pos_dif0 + 100]){
-                    for(auto [p1, s1] : small_moves[i][pos_dif1 + 100]){
+                if(abs(pos_dif0) > 500 || abs(pos_dif1) > 500) continue;
+                if(small_moves[i][pos_dif0 + 500].empty()) continue;
+                if(small_moves[i][pos_dif1 + 500].empty()) continue;
+                for(auto [p0, s0] : small_moves[i][pos_dif0 + 500]){
+                    for(auto [p1, s1] : small_moves[i][pos_dif1 + 500]){
                         if(p0 == vd0+100 && p1 == vd1+100){
                             for(int j=0;j<s0.size();j++){
                                 ++length;
