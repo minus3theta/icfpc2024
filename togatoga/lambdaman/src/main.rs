@@ -16,6 +16,13 @@ struct LamdamanSolverCli {
     /// e.g. data/lamdaman/lamadaman1.out
     #[arg(short, long)]
     output: Option<PathBuf>,
+
+    /// Group size
+    #[arg(short, long, default_value = "1")]
+    group_size: usize,
+
+    #[arg(short, long, default_value = "false")]
+    verbose: bool,
 }
 
 fn main() {
@@ -31,7 +38,11 @@ fn main() {
         }
         board.push(line.chars().collect::<Vec<char>>());
     }
-    let cmds = lambdaman::Solver::new(board).solve();
+    let config = lambdaman::Config {
+        group_size: cli.group_size,
+        verbose: cli.verbose,
+    };
+    let cmds = lambdaman::Solver::new(board).solve(&config);
 
     let cmd_str = cmds
         .iter()
@@ -44,6 +55,7 @@ fn main() {
         .collect::<String>();
 
     // stdout or write file
+
     match cli.output {
         Some(file) => {
             std::fs::write(file, cmd_str).expect("Failed to write file");
@@ -52,4 +64,5 @@ fn main() {
             println!("{}", cmd_str);
         }
     }
+    eprintln!("Cmd size: {}", cmds.len());
 }
