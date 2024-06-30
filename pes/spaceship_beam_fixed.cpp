@@ -217,7 +217,7 @@ private:
 };
 
 //------------------------------------------------------------------------------
-vector<pair<int, string>> small_moves[30][1000];
+vector<pair<int, string>> small_moves[30][1001];
 
 void make_small_moves(){
     auto qu = queue<pair<pair<int, int>, string>>();
@@ -542,6 +542,7 @@ class State {
                 }
             }
             if(find) return;
+
             auto cur_pos = pos;
             auto cur_vel = m_vel;
             int step = 0;
