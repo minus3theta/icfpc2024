@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Ok};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use icfpc2024::token;
 
 #[derive(Parser)]
@@ -18,6 +18,8 @@ enum Command {
         /// e.g. data/spaceship/spaceship1.kaku.out
         #[arg(short, long)]
         output: PathBuf,
+        #[arg(short, long)]
+        task: Task,
         /// Read raw tokens
         #[arg(short, long)]
         raw: bool,
@@ -25,6 +27,18 @@ enum Command {
         #[arg(short, long)]
         save: Option<PathBuf>,
     },
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+enum Task {
+    // lambdaman
+    Lambdaman,
+    // spaceship
+    Spaceship,
+    // 3d
+    Threed,
+    // efficieny
+    Efficieny,
 }
 
 async fn submit_solution(
@@ -71,10 +85,18 @@ async fn submit_solution(
 async fn main() -> anyhow::Result<()> {
     let cli = IcfpcCli::parse();
     match cli.commands {
-        Command::Submit { output, raw, save } => {
-            let result = submit_solution(output, raw, save).await?;
-            println!("{}", result);
-        }
+        Command::Submit {
+            output,
+            task,
+            raw,
+            save,
+        } => match task {
+            Task::Spaceship => {
+                let result = submit_solution(output, raw, save).await?;
+                println!("{}", result);
+            }
+            _ => unimplemented!(),
+        },
     }
     Ok(())
 }
