@@ -7,10 +7,7 @@ fn main() -> anyhow::Result<()> {
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
 
-    println!(
-        "{:?}",
-        token::encode(&[token::Token::String(input.trim().to_owned())])?
-    );
+    println!("{}", token::encode(&token::encode_string(input.trim())?)?);
 
     Ok(())
 }
