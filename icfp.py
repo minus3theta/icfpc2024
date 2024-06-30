@@ -431,7 +431,20 @@ def make_ast(tokens):
     return stack
 
 
+def make_z_combinator(f, x, y):
+    #"B$ L~f B$ L~x B$ v~f L~y B$ B$ v~x v~x v~y L~x B$ v~f L~y B$ B$ v~x v~x v~y")
+    return f"B$ L{f} B$ L{x} B$ v{f} L{y} B$ B$ v{x} v{x} v{y} L{x} B$ v{f} L{y} B$ B$ v{x} v{x} v{y}"
+
+def replace_y_combinator(s):
+    return re.sub(r"B\$ L(.) B\$ L(.) B\$ v(.) B\$ v(.) v(.) L(.) B\$ v(.) B\$ v(.) v(.)", make_z_combinator('"', '#', '%'), s)
+    # if mo is not None:
+    #     print(":detect Y combinator")
+    # return s
+
 def parse_icfp(s):
+    t = replace_y_combinator(s)
+    if t != s:
+        print(":Y:", s, " --> ", t)
     tokens = [Token.from_string(token_str) for token_str in re.split("[ \t\r\n]+", s)]
     print("  tokens:", ' '.join([repr(token) for token in tokens]))
     return make_ast(tokens)
