@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Ok};
 use clap::{Parser, Subcommand, ValueEnum};
-use icfpc2024::token;
+use icfpc2024::token::{self, encode_string};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -47,7 +47,7 @@ async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
         .next()
         .context("Expected file name")?;
     let output_file_name = output.to_string_lossy().to_string();
-    println!("problem_name: {}", problem_name);
+    eprintln!("problem_name: {}", problem_name);
     let tokens = [
         token::Token::BinaryOp(token::BinaryOp::Concat),
         token::Token::String(format!("solve {problem_name} ")),
@@ -63,6 +63,29 @@ async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
     Ok(result)
 }
 
+async fn solve_lambdaman(output: PathBuf) -> anyhow::Result<String> {
+    let text = std::fs::read_to_string(output.clone())?;
+
+    let problem_file_name = output
+        .file_name()
+        .context("Expected file name")?
+        .to_string_lossy();
+    let problem_name = problem_file_name
+        .split('.')
+        .next()
+        .context("Expected file name")?;
+    let output_file_name = output.to_string_lossy().to_string();
+    let cmd = format!("solve {problem_name} {text}");
+    eprintln!("problem_name: {}", problem_name);
+    // lambdamanに高速なやつ
+    let tokens = encode_string(&cmd)?;
+    let request = token::encode(&tokens)?;
+    eprintln!("Submitting '{output_file_name}' for '{problem_name}' to the server...");
+    let tokens = icfpc2024::send(request).await?;
+    let result = icfpc2024::eval_tokens(&tokens)?;
+    Ok(result)
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = IcfpcCli::parse();
@@ -72,7 +95,13 @@ async fn main() -> anyhow::Result<()> {
                 let result = solve_spaceship(output).await?;
                 println!("{}", result);
             }
-            _ => unimplemented!(),
+            Task::Lambdaman => {
+                let result = solve_lambdaman(output).await?;
+                println!("{}", result);
+            }
+            _ => {
+                eprintln!("Not implemented yet");
+            }
         },
     }
     Ok(())
