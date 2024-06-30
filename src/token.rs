@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::{cmp::min, collections::HashSet, str::FromStr};
 
 use anyhow::{bail, Context};
 use itertools::Itertools;
@@ -89,6 +89,8 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
 }
 
 pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
+    let mut current = vec![Token::String(s.to_owned())];
+    let mut min_len = encode(&current[..]).unwrap().len();
     if s.split_whitespace()
         .last()
         .unwrap()
@@ -112,7 +114,7 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
         if order.len() == 1 {
             order.insert(0, ' ');
         }
-        let mut result = vec![
+        let mut cand = vec![
             Token::BinaryOp(BinaryOp::Concat),
             Token::String(s[..s.len() - len].to_owned()),
             Token::BinaryOp(BinaryOp::Apply),
@@ -145,7 +147,7 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             Token::Variable(BigInt::from(4)),
             Token::Integer(BigInt::from(order.len())),
         ];
-        result.extend(order.iter().enumerate().flat_map(|(i, c)| {
+        cand.extend(order.iter().enumerate().flat_map(|(i, c)| {
             if i != order.len() - 1 {
                 vec![
                     Token::If,
@@ -160,7 +162,7 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
                 vec![Token::String(c.to_string())]
             }
         }));
-        result.extend(vec![Token::Integer(
+        cand.extend(vec![Token::Integer(
             s.split_whitespace()
                 .last()
                 .unwrap()
@@ -169,7 +171,131 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
                     acc * order.len() + order.iter().position(|m| c == *m).unwrap()
                 }),
         )]);
-        return Ok(result);
+        let cand_len = encode(&cand[..]).unwrap().len();
+        if cand_len < min_len {
+            min_len = cand_len;
+            current = cand;
+        }
+        let len_group = s
+            .split_whitespace()
+            .last()
+            .unwrap()
+            .chars()
+            .chunk_by(|c| *c)
+            .into_iter()
+            .map(|(_, chunk)| chunk.count())
+            .collect::<HashSet<_>>();
+        for len_current in len_group {
+            let mut cand = vec![
+                Token::BinaryOp(BinaryOp::Concat),
+                Token::String(s[..s.len() - len].to_owned()),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(2)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(2)),
+                Token::Variable(BigInt::from(2)),
+                Token::Lambda(BigInt::from(2)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(2)),
+                Token::Variable(BigInt::from(2)),
+                Token::Lambda(BigInt::from(3)),
+                Token::Lambda(BigInt::from(4)),
+                Token::If,
+                Token::BinaryOp(BinaryOp::Equal),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(0)),
+                Token::String("".to_owned()),
+                Token::BinaryOp(BinaryOp::Concat),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(3)),
+                Token::BinaryOp(BinaryOp::Div),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(order.len() * len_current)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(9)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(5)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(6)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(5)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(6)),
+                Token::Variable(BigInt::from(6)),
+                Token::Lambda(BigInt::from(6)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(5)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(6)),
+                Token::Variable(BigInt::from(6)),
+                Token::Lambda(BigInt::from(7)),
+                Token::Lambda(BigInt::from(8)),
+                Token::If,
+                Token::BinaryOp(BinaryOp::Equal),
+                Token::Variable(BigInt::from(8)),
+                Token::Integer(BigInt::from(0)),
+                Token::Variable(BigInt::from(9)),
+                Token::BinaryOp(BinaryOp::Concat),
+                Token::Variable(BigInt::from(9)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(7)),
+                Token::BinaryOp(BinaryOp::Sub),
+                Token::Variable(BigInt::from(8)),
+                Token::Integer(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Mod),
+                Token::BinaryOp(BinaryOp::Div),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(order.len())),
+                Token::Integer(BigInt::from(len_current)),
+            ];
+            cand.extend(order.iter().enumerate().flat_map(|(i, c)| {
+                if i != order.len() - 1 {
+                    vec![
+                        Token::If,
+                        Token::BinaryOp(BinaryOp::Equal),
+                        Token::BinaryOp(BinaryOp::Mod),
+                        Token::Variable(BigInt::from(4)),
+                        Token::Integer(BigInt::from(order.len())),
+                        Token::Integer(BigInt::from(i)),
+                        Token::String(c.to_string()),
+                    ]
+                } else {
+                    vec![Token::String(c.to_string())]
+                }
+            }));
+            cand.extend(vec![Token::Integer(
+                s.split_whitespace()
+                    .last()
+                    .unwrap()
+                    .chars()
+                    .chunk_by(|c| *c)
+                    .into_iter()
+                    .fold(BigInt::from(0), |acc, (c, g)| {
+                        let mut res = acc;
+                        let mut remain = g.count();
+                        while remain > 0 {
+                            res = res * order.len() * len_current
+                                + (min(remain, len_current) - 1) * order.len()
+                                + order.iter().position(|m| c == *m).unwrap();
+                            remain -= min(remain, len_current);
+                        }
+                        res
+                    }),
+            )]);
+            let cand_len = encode(&cand[..]).unwrap().len();
+            if cand_len < min_len {
+                min_len = cand_len;
+                current = cand;
+            }
+        }
     }
     if s.split_whitespace()
         .last()
@@ -263,13 +389,17 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             })
             .collect_vec();
         let len = tokens.len();
-        return Ok(tokens
+        let cand = tokens
             .into_iter()
             .enumerate()
             .flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 }))
-            .collect_vec());
+            .collect_vec();
+        let cand_len = encode(&cand[..]).unwrap().len();
+        if cand_len < min_len {
+            current = cand;
+        }
     }
-    Ok(vec![Token::String(s.to_owned())])
+    Ok(current)
 }
 
 #[cfg(test)]
