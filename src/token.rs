@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{bail, Context};
 use itertools::Itertools;
@@ -104,10 +104,10 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             .last()
             .unwrap()
             .chars()
-            .counts_by(|c| c)
+            .collect::<HashSet<_>>()
             .iter()
-            .map(|(c, _)| *c)
-            .sorted_by_key(|c| *c == first_char)
+            .sorted_by_key(|c| **c == first_char)
+            .copied()
             .collect_vec();
         if order.len() == 1 {
             order.insert(0, ' ');
@@ -145,27 +145,21 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             Token::Variable(BigInt::from(4)),
             Token::Integer(BigInt::from(order.len())),
         ];
-        result.extend(
-            order
-                .iter()
-                .enumerate()
-                .map(|(i, c)| {
-                    if i != order.len() - 1 {
-                        vec![
-                            Token::If,
-                            Token::BinaryOp(BinaryOp::Equal),
-                            Token::BinaryOp(BinaryOp::Mod),
-                            Token::Variable(BigInt::from(4)),
-                            Token::Integer(BigInt::from(order.len())),
-                            Token::Integer(BigInt::from(i)),
-                            Token::String(c.to_string()),
-                        ]
-                    } else {
-                        vec![Token::String(c.to_string())]
-                    }
-                })
-                .flatten(),
-        );
+        result.extend(order.iter().enumerate().flat_map(|(i, c)| {
+            if i != order.len() - 1 {
+                vec![
+                    Token::If,
+                    Token::BinaryOp(BinaryOp::Equal),
+                    Token::BinaryOp(BinaryOp::Mod),
+                    Token::Variable(BigInt::from(4)),
+                    Token::Integer(BigInt::from(order.len())),
+                    Token::Integer(BigInt::from(i)),
+                    Token::String(c.to_string()),
+                ]
+            } else {
+                vec![Token::String(c.to_string())]
+            }
+        }));
         result.extend(vec![Token::Integer(
             s.split_whitespace()
                 .last()
