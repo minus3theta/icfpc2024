@@ -78,7 +78,7 @@ async fn solve_lambdaman(output: PathBuf) -> anyhow::Result<String> {
     eprintln!("problem_name: {}", problem_name);
     // lambdamanに高速なやつ
     let tokens = encode_string(&text)?;
-    let request = token::encode(&tokens)?;    
+    let request = token::encode(&tokens)?;
     eprintln!("Submitting '{output_file_name}' for '{problem_name}' to the server...");
     let tokens = icfpc2024::send(request).await?;
     let result = icfpc2024::eval_tokens(&tokens)?;
@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
                 let result = solve_lambdaman(output).await?;
                 println!("{}", result);
             }
-            _ => {                
+            _ => {
                 eprintln!("Not implemented yet");
             }
         },

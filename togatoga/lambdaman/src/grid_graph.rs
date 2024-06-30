@@ -75,33 +75,55 @@ impl From<Board> for GridGraph {
 }
 
 impl GridGraph {
-    // Returns the bfs path from src to target.
-    pub fn bfs_path(&mut self, src: usize, target: usize) -> Vec<(usize, LambdamanCommand)> {
+    // Return the shortest costs from src to all nodes
+    pub fn bfs(&mut self, src: usize) -> Vec<usize> {
         let mut que = std::collections::VecDeque::new();
+        que.push_back((src, 0));
+        let mut visited = vec![false; self.edges.len()];
+        let mut results = vec![std::usize::MAX; self.edges.len()];
+        while let Some((node, cost)) = que.pop_front() {
+            if visited[node] {
+                continue;
+            }
+            visited[node] = true;
+            results[node] = cost;
+            for &(to, _) in self.edges[node].iter() {
+                if !visited[to] {
+                    que.push_back((to, cost + 1));
+                }
+            }
+        }
+        results
+    }
+
+    // Return the shortest costs from src to all nodes
+    pub fn bfs_path(&self, src: usize, target: usize) -> Vec<(usize, LambdamanCommand)> {
+        let mut que = std::collections::VecDeque::new();
+        que.push_back((src, None));
+        let mut visited = vec![false; self.edges.len()];
         let mut prev = vec![None; self.edges.len()];
-        que.push_back(src);
-        while let Some(idx) = que.pop_front() {
-            if idx == target {
+        while let Some((node, cmd)) = que.pop_front() {
+            if visited[node] {
+                continue;
+            }
+            visited[node] = true;
+            prev[node] = cmd;
+            if node == target {
                 break;
             }
-            for &(to, cmd) in &self.edges[idx] {
-                if to == src {
-                    continue;
-                }
-                if prev[to].is_none() {
-                    prev[to] = Some((cmd, idx));
-                    que.push_back(to);
+            for &(to, cmd) in self.edges[node].iter() {
+                if !visited[to] {
+                    que.push_back((to, Some((node, cmd))));
                 }
             }
         }
-
-        let mut result = vec![];
-        let mut idx = target;
-        while let Some((cmd, pre)) = prev[idx] {
-            result.push((idx, cmd));
-            idx = pre;
+        let mut path = vec![];
+        let mut node = target;
+        while let Some((prev_node, cmd)) = prev[node] {
+            path.push((node, cmd));
+            node = prev_node;
         }
-        result.reverse();
-        result
+        path.reverse();
+        path
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::BTreeSet;
 
 use grid_graph::LambdamanCommand;
 use union_find::UnionFind;
@@ -49,75 +49,52 @@ impl Solver {
     }
     pub fn solve(&self) -> Vec<LambdamanCommand> {
         let input = Input::from(self.board.clone());
+        eprintln!("Budiling grid graph...");
         let mut graph = grid_graph::GridGraph::from(input.board.clone());
+        eprintln!("Grid graph size: {}", graph.edges.len());
 
         // まずGrid Graphを的なサイズのグループに分けます
         eprintln!("Building group...");
-        let mut que = VecDeque::default();
-        let pos = graph.pos_to_idx[&input.pos];
-
-        let mut visited = vec![false; graph.edges.len()];
-        que.push_back((pos, pos));
         let mut ut = UnionFind::new(graph.edges.len());
-        // TODO ここ結構雑なので、もう少し工夫できるかも
-        let max_group_size = graph.edges.len() / 3;
-        while let Some((pos, pre)) = que.pop_front() {
-            if visited[pos] {
-                continue;
-            }
-            visited[pos] = true;
-            if !ut.is_same_set(pos, pre)
-                && ut.union_size(pos) + ut.union_size(pre) <= max_group_size
-            {
-                ut.unite(pos, pre);
-            }
-            for (to, _) in graph.edges[pos].iter() {
-                if visited[*to] {
-                    continue;
-                }
-                que.push_back((*to, pos));
-            }
-        }
-
         eprintln!("Merging group...");
         let pre_group_size = ut.size();
-        // 適当に最大サイズと最小サイズの差が半分以下になるまでグループをマージします
-        loop {
+        let mut rng = xorshift::Xorshift128::new(42);
+        // 適当な閾値でグループをマージします
+        while ut.size() > 10 {
             // 一番小さいグループと最大サイズのグループを見つけます
             let mut min_size = std::usize::MAX;
-            let mut min_group = 0;
-            let mut max_size = 0;
+            let mut min_group_id = 0;
+            let mut group_to_idx = vec![vec![]; graph.edges.len()];
             for i in 0..graph.edges.len() {
-                if ut.is_root(i) {
-                    let size = ut.union_size(i);
-                    if size < min_size {
-                        min_size = size;
-                        min_group = i;
-                    }
-                    if size > max_size {
-                        max_size = size;
-                    }
+                let group_size = ut.union_size(i);
+                let group_id = ut.root(i);
+                if group_size < min_size || (group_size == min_size && rng.gen() % 2 == 0) {
+                    min_size = group_size;
+                    min_group_id = group_id;
                 }
-            }
-            if max_size < min_size * 2 {
-                break;
+
+                group_to_idx[group_id].push(i);
             }
 
-            // 隣接するグループで次に小さいグループを見つけます
+            // 隣接するグループで一番小さいグループを見つけます
             let mut min_neighbor_size = std::usize::MAX;
-            let mut min_neighbor_group = 0;
-            for i in 0..graph.edges.len() {
-                let group_id = ut.root(i);
-                if group_id == min_group {
-                    continue;
-                }
-                let size = ut.union_size(group_id);
-                if size < min_neighbor_size {
-                    min_neighbor_size = size;
-                    min_neighbor_group = group_id;
+            let mut min_neighbor_group_id = 0;
+            for node in group_to_idx[min_group_id].iter() {
+                for &(neighbor, _) in graph.edges[*node].iter() {
+                    let neighbor_group_id = ut.root(neighbor);
+                    if neighbor_group_id == min_group_id {
+                        continue;
+                    }
+                    let neighbor_group_size = ut.union_size(neighbor);
+                    if neighbor_group_size < min_neighbor_size
+                        || (neighbor_group_size == min_neighbor_size && rng.gen() % 2 == 0)
+                    {
+                        min_neighbor_group_id = neighbor_group_id;
+                        min_neighbor_size = neighbor_group_size;
+                    }
                 }
             }
-            ut.unite(min_group, min_neighbor_group);
+            ut.unite(min_group_id, min_neighbor_group_id);
         }
         eprintln!("Group size: {} -> {}", pre_group_size, ut.size());
 
@@ -139,43 +116,44 @@ impl Solver {
 
         let mut pos = graph.pos_to_idx[&input.pos];
         let mut result_cmds = vec![];
-        loop {
+
+        for counter in 0.. {
+            if counter % 100 == 0 {
+                eprintln!("Counter: {}", counter);
+            }
             let group_id = ut.root(pos);
             group_to_idx[group_id].remove(&pos);
             if group_set.is_empty() {
                 break;
             }
 
-            let mut min_cmds = if group_to_idx[group_id].is_empty() {
+            let costs = graph.bfs(pos);
+            let min_node = if group_to_idx[group_id].is_empty() {
                 // 同じグループのノードを全部たどったらまだ未達のグループで一番近いノードに向かいます
                 let mut min_cost = std::usize::MAX;
-                let mut min_cmds = vec![];
+                let mut min_node = None;
                 for &target_group in group_set.iter() {
                     for &target in group_to_idx[target_group].iter() {
-                        let cmds = graph.bfs_path(pos, target);
-
-                        let cost = cmds.len();
-                        if cost < min_cost {
-                            min_cost = cost;
-                            min_cmds = cmds;
+                        if costs[target] < min_cost {
+                            min_cost = costs[target];
+                            min_node = Some(target);
                         }
                     }
                 }
-                min_cmds
+                min_node
             } else {
                 // まだ未達のグループがある場合はそのグループのノードに向かいます
                 let mut min_cost = std::usize::MAX;
-                let mut min_cmds = vec![];
+                let mut min_node = None;
                 for &target in group_to_idx[group_id].iter() {
-                    let cmds = graph.bfs_path(pos, target);
-                    let cost = cmds.len();
-                    if cost < min_cost {
-                        min_cost = cost;
-                        min_cmds = cmds;
+                    if costs[target] < min_cost {
+                        min_cost = costs[target];
+                        min_node = Some(target);
                     }
                 }
-                min_cmds
+                min_node
             };
+            let mut min_cmds = graph.bfs_path(pos, min_node.expect("min_node is None"));
             // 移動します
             for &(node, _) in min_cmds.iter() {
                 let group_id = ut.root(node);
@@ -205,4 +183,42 @@ pub mod macros {
     #[macro_export]
     #[allow(unused_macros)]
     macro_rules ! dep {() => {if cfg ! (debug_assertions ) {{use std :: io :: Write ; write ! (std :: io :: stderr () , "\x1b[31;1m{}\x1b[m " , "[DEBUG]" ) . unwrap () ; } ep ! () ; } } ; ($ e : expr , $ ($ es : expr ) ,+ ) => {if cfg ! (debug_assertions ) {{use std :: io :: Write ; write ! (std :: io :: stderr () , "\x1b[31;1m{}\x1b[m " , "[DEBUG]" ) . unwrap () ; } ep ! ($ e , $ ($ es ) ,+ ) ; } } ; ($ e : expr ) => {if cfg ! (debug_assertions ) {{use std :: io :: Write ; write ! (std :: io :: stderr () , "\x1b[31;1m{}\x1b[m " , "[DEBUG]" ) . unwrap () ; } ep ! ($ e ) ; } } ; }
+}
+
+#[allow(clippy::module_inception, clippy::many_single_char_names)]
+/// The period is 2^128 - 1
+pub mod xorshift {
+    #[derive(Debug, Clone)]
+    #[allow(dead_code)]
+    pub struct Xorshift128 {
+        x: u32,
+        y: u32,
+        z: u32,
+        w: u32,
+    }
+    impl Default for Xorshift128 {
+        fn default() -> Self {
+            Xorshift128 {
+                x: 123456789,
+                y: 362436069,
+                z: 521288629,
+                w: 88675123,
+            }
+        }
+    }
+    impl Xorshift128 {
+        pub fn new(seed: u32) -> Xorshift128 {
+            let mut xorshift = Xorshift128::default();
+            xorshift.z ^= seed;
+            xorshift
+        }
+        pub fn gen(&mut self) -> u32 {
+            let t = self.x ^ (self.x << 11);
+            self.x = self.y;
+            self.y = self.z;
+            self.z = self.w;
+            self.w = (self.w ^ (self.w >> 19)) ^ (t ^ (t >> 8));
+            self.w
+        }
+    }
 }
