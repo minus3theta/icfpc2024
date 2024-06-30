@@ -3,7 +3,6 @@ use std::collections::{BTreeSet, VecDeque};
 use grid_graph::LambdamanCommand;
 use union_find::UnionFind;
 
-
 pub mod grid_graph;
 pub mod scanner;
 mod union_find;

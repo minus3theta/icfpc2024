@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use lambdaman::scanner;
 use lambdaman::grid_graph::LambdamanCommand;
+use lambdaman::scanner;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -33,13 +33,16 @@ fn main() {
     }
     let cmds = lambdaman::Solver::new(board).solve();
 
-    let cmd_str = cmds.iter().map(|cmd| match cmd {
-        LambdamanCommand::Up => "U",
-        LambdamanCommand::Down => "D",
-        LambdamanCommand::Right => "R",
-        LambdamanCommand::Left => "L",
-    }).collect::<String>();
-    
+    let cmd_str = cmds
+        .iter()
+        .map(|cmd| match cmd {
+            LambdamanCommand::Up => "U",
+            LambdamanCommand::Down => "D",
+            LambdamanCommand::Right => "R",
+            LambdamanCommand::Left => "L",
+        })
+        .collect::<String>();
+
     // stdout or write file
     match cli.output {
         Some(file) => {
@@ -49,5 +52,4 @@ fn main() {
             println!("{}", cmd_str);
         }
     }
-
 }
