@@ -75,9 +75,10 @@ async fn solve_lambdaman(output: PathBuf) -> anyhow::Result<String> {
         .next()
         .context("Expected file name")?;
     let output_file_name = output.to_string_lossy().to_string();
+    let cmd = format!("solve {problem_name} {text}");
     eprintln!("problem_name: {}", problem_name);
     // lambdamanに高速なやつ
-    let tokens = encode_string(&text)?;
+    let tokens = encode_string(&cmd)?;
     let request = token::encode(&tokens)?;
     eprintln!("Submitting '{output_file_name}' for '{problem_name}' to the server...");
     let tokens = icfpc2024::send(request).await?;
