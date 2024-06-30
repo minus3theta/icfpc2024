@@ -295,7 +295,6 @@ class BinaryOperator(Token):
             newenv.update(x.env)
 
             if x.proc.__class__ == Lambda:
-                # 答えはLambdaになる
                 newenv.update(x.env)
                 newenv[x.var] = y
                 # print(f"B$ env (L) = {newenv}/{env}, {repr(x.proc)}, after adding #{x.var} = {y}")
@@ -327,7 +326,7 @@ class BinaryOperator(Token):
             assert x.__class__ == Integer and y.__class__ == Integer
             sign = 1 if x.val >= 0 else -1
             sign *= 1 if y.val >= 0 else -1
-            self.evaled = Integer(sign * (abs(x.val) // abs(y.val)))   # TRUNCATE TOWARDS ZERO
+            self.evaled = Integer(sign * (abs(x.val) // abs(y.val)))  # TRUNCATE TOWARDS ZERO
         elif self.op == "%":
             assert x.__class__ == Integer and y.__class__ == Integer
             sign = 1 if x.val >= 0 else -1
@@ -356,14 +355,14 @@ class BinaryOperator(Token):
         elif self.op == "D":
             assert x.__class__ == Integer and y.__class__ == String
             self.evaled = String(y.val[x.val:])
-        elif self.op == "$":  # "B$""
-            assert x.__class__ == Lambda # or x.__class__ == function
+        elif self.op == "$":  # "B$"
+            assert x.__class__ == Lambda  # or x.__class__ == function
             newenv = env.copy()
             # env[x.var] = y
             # print(f"B$ env = {env}, after adding #{x.var} = {y}")
             # self.evaled = x.lmd(env)
             newenv[x.var] = y
-            print(f"B$ env = {newenv}/{env}, after adding #{x.var} = {y}")
+            # print(f"B$ env = {newenv}/{env}, after adding #{x.var} = {y}")
             self.evaled = x.lmd(newenv)
             if self.evaled.__class__ == Lambda:
                 self.evaled.env = newenv
@@ -437,18 +436,16 @@ def make_z_combinator(f, x, y):
 
 def replace_y_combinator(s):
     return re.sub(r"B\$ L(.) B\$ L(.) B\$ v(.) B\$ v(.) v(.) L(.) B\$ v(.) B\$ v(.) v(.)", make_z_combinator('"', '#', '%'), s)
-    # if mo is not None:
-    #     print(":detect Y combinator")
-    # return s
+
 
 def parse_icfp(s):
     t = replace_y_combinator(s)
     if t != s:
-        print(":Y:", s, " --> ", t)
+        print(":replacing Y-combinator:", s, "->", t)
+        s = t
     tokens = [Token.from_string(token_str) for token_str in re.split("[ \t\r\n]+", s)]
     print("  tokens:", ' '.join([repr(token) for token in tokens]))
     return make_ast(tokens)
-
 
 
 def my_test(icfp_expr, expected):
