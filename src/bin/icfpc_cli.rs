@@ -20,6 +20,12 @@ enum Command {
         output: PathBuf,
         #[arg(short, long)]
         task: Task,
+        /// Read raw tokens
+        #[arg(short, long)]
+        raw: bool,
+        /// Save post payload to file
+        #[arg(short, long)]
+        save: Option<PathBuf>,
     },
 }
 
@@ -35,8 +41,12 @@ enum Task {
     Efficieny,
 }
 
-async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
-    let text = std::fs::read_to_string(output.clone())?;
+async fn submit_solution(
+    output: PathBuf,
+    raw: bool,
+    save: Option<PathBuf>,
+) -> anyhow::Result<String> {
+    let text = std::fs::read_to_string(&output)?;
 
     let problem_file_name = output
         .file_name()
@@ -48,14 +58,22 @@ async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
         .context("Expected file name")?;
     let output_file_name = output.to_string_lossy().to_string();
     println!("problem_name: {}", problem_name);
-    let tokens = [
-        token::Token::BinaryOp(token::BinaryOp::Concat),
-        token::Token::String(format!("solve {problem_name} ")),
-        // TODO(togatoga): Bigintを使ってうまく圧縮したい
-        token::Token::String(text),
-    ];
 
-    let request = token::encode(&tokens)?;
+    let request = if raw {
+        text
+    } else {
+        let mut tokens = vec![
+            token::Token::BinaryOp(token::BinaryOp::Concat),
+            token::Token::String(format!("solve {problem_name} ")),
+        ];
+        tokens.extend(token::encode_string(&text)?);
+
+        token::encode(&tokens)?
+    };
+
+    if let Some(save) = save {
+        std::fs::write(save, &request)?;
+    }
     // println!("{}", request);
     eprintln!("Submitting '{output_file_name}' for '{problem_name}' to the server...");
     let tokens = icfpc2024::send(request).await?;
@@ -67,9 +85,14 @@ async fn solve_spaceship(output: PathBuf) -> anyhow::Result<String> {
 async fn main() -> anyhow::Result<()> {
     let cli = IcfpcCli::parse();
     match cli.commands {
-        Command::Submit { output, task } => match task {
+        Command::Submit {
+            output,
+            task,
+            raw,
+            save,
+        } => match task {
             Task::Spaceship => {
-                let result = solve_spaceship(output).await?;
+                let result = submit_solution(output, raw, save).await?;
                 println!("{}", result);
             }
             _ => unimplemented!(),
