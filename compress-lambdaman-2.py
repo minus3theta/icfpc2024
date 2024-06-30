@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import click
 
-head = "B$ B$ Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx Lf Lx ? B= vx I! S B$ L$ B. B$ Lc B$ B$ Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx Lf Lx ? B= vx I! S B. vc B$ vf B- vx I\" B% vx I\"! U$ B% B/ vx I\"! I\"! B$ vf v$ B/ vx I\"!! I"
+head = "B$ B$ Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx Lf Lx ? B= vx I! S B$ L$ B. B$ Lc B$ B$ Lf B$ Lx B$ vf B$ vx vx Lx B$ vf B$ vx vx Lf Lx ? B= vx I! S B. vc B$ vf B- vx I\" B/ B% vx I%9 I% B$ B$ Ls Ln BT I\" BD vn vs SOL>F B% vx I% B$ vf v$ B/ vx I%9 I"
 
 def base94(x: int):
     if x == 0:
@@ -37,9 +37,11 @@ def rle(content):
     cnt = 0
     for ch in content:
         if ch not in "OL>F": break
+        # if ch not in "URDL": break
         if ch == last:
             cnt += 1
-            if cnt == 93:
+            # if cnt == 93:
+            if cnt == 99:
                 result.append((last, cnt))
                 last = None
                 cnt = 0
@@ -53,19 +55,25 @@ def rle(content):
     return result
 
 # code = { 'U': 0, 'R': 1, 'D': 2, 'L': 3 }
+code = { 'O': 0, 'L': 1, '>': 2, 'F': 3 }
 # code = { 'U': 'O', 'R': 'L', 'D': '>', 'L': 'F' }
 
 @click.command()
 @click.argument("src", type=click.Path(exists=True, file_okay=True), default="data/lambdaman/lambdaman1.koudai.dfs.out")
-def main(src):
-    result = ""
+@click.argument("n", type=int)
+def main(src, n):
+    acc = 0
+    # result = ""
     with open(src, "r") as f:
         content = f.read().rstrip()
         encoded = encode_string(content)
+        # print("::", rle(encoded))
         for ch, count in reversed(rle(encoded)):
-            result += ch + chr(count + 33)
+            # result += ch + chr(count + 33)
+            assert 1 <= count <= 99
+            acc = acc * 400 + count * 4 + code[ch]
 
-    print(head + result)
+    print("B. S" + encode_string(f"solve lambdaman{n} ") + " " + head + base94(acc), end="")
 
 if __name__ == "__main__":
     main()
