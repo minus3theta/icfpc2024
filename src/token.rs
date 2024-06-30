@@ -1,4 +1,7 @@
+use std::{cmp::min, collections::HashSet, str::FromStr};
+
 use anyhow::{bail, Context};
+use itertools::Itertools;
 use num_bigint::BigInt;
 
 pub use binary_op::BinaryOp;
@@ -86,6 +89,8 @@ fn encode_token(token: &Token) -> anyhow::Result<String> {
 }
 
 pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
+    let mut current = vec![Token::String(s.to_owned())];
+    let mut min_len = encode(&current[..]).unwrap().len();
     if s.split_whitespace()
         .last()
         .unwrap()
@@ -94,7 +99,22 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
     {
         // lambdaman 用のエンコード
         let len = s.split_whitespace().last().unwrap().len();
-        return Ok(vec![
+        let first_char = s.split_whitespace().last().unwrap().chars().next().unwrap();
+        // D L R U のうち登場するもの（0 を終端とするため最初の文字を最後に持っていく）
+        let mut order = s
+            .split_whitespace()
+            .last()
+            .unwrap()
+            .chars()
+            .collect::<HashSet<_>>()
+            .iter()
+            .sorted_by_key(|c| **c == first_char)
+            .copied()
+            .collect_vec();
+        if order.len() == 1 {
+            order.insert(0, ' ');
+        }
+        let mut cand = vec![
             Token::BinaryOp(BinaryOp::Concat),
             Token::String(s[..s.len() - len].to_owned()),
             Token::BinaryOp(BinaryOp::Apply),
@@ -125,62 +145,50 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             Token::Variable(BigInt::from(3)),
             Token::BinaryOp(BinaryOp::Div),
             Token::Variable(BigInt::from(4)),
-            Token::Integer(BigInt::from(5)),
-            Token::If,
-            Token::BinaryOp(BinaryOp::Equal),
-            Token::BinaryOp(BinaryOp::Mod),
-            Token::Variable(BigInt::from(4)),
-            Token::Integer(BigInt::from(5)),
-            Token::Integer(BigInt::from(1)),
-            Token::String("D".to_owned()),
-            Token::If,
-            Token::BinaryOp(BinaryOp::Equal),
-            Token::BinaryOp(BinaryOp::Mod),
-            Token::Variable(BigInt::from(4)),
-            Token::Integer(BigInt::from(5)),
-            Token::Integer(BigInt::from(2)),
-            Token::String("L".to_owned()),
-            Token::If,
-            Token::BinaryOp(BinaryOp::Equal),
-            Token::BinaryOp(BinaryOp::Mod),
-            Token::Variable(BigInt::from(4)),
-            Token::Integer(BigInt::from(5)),
-            Token::Integer(BigInt::from(3)),
-            Token::String("R".to_owned()),
-            Token::String("U".to_owned()),
-            Token::Integer(s.split_whitespace().last().unwrap().chars().fold(
-                BigInt::from(0),
-                |acc, c| {
-                    acc * 5
-                        + match c {
-                            'D' => 1,
-                            'L' => 2,
-                            'R' => 3,
-                            'U' => 4,
-                            _ => unreachable!(),
-                        }
-                },
-            )),
-        ]);
-    }
-    Ok(vec![Token::String(s.to_owned())])
-    /*
-    // spaceship に使えると思ったが、スコアには move の数が使われるので使えなかった…
-    let tokens = s.chars().scan(false, |cum, c| {
-            let next = c.is_numeric() && (*cum || c != '0');
-            *cum = next;
-            Some((c, next))
-        }).enumerate().chunk_by(|(_, (_, b))| *b).into_iter().map(|(key, chunk)| {
-        let chunk_array = chunk.collect::<Vec<_>>();
-        // 先頭と末尾では "B. " が不要になるので 8 桁分ボーナス
-        let len = chunk_array.len() + if chunk_array[0].0 == 0 { 8 } else { 0 } + if chunk_array[chunk_array.len() - 1].0 == s.len() - 1 { 8 } else { 0 };
-        // "B. B. S{} U$ I{} S{}" とエンコードするので増えた 13 文字以上の改善が得られる 27 桁以上連続しない場合は数値にしない
-        (chunk_array.into_iter().map(|(_, (c, _))| c).collect::<String>(), key && len >= 27)
-    }).chunk_by(|(_, i)| *i).into_iter().map(|(key, chunk)| {
-        if key {
-            vec![
+            Token::Integer(BigInt::from(order.len())),
+        ];
+        cand.extend(order.iter().enumerate().flat_map(|(i, c)| {
+            if i != order.len() - 1 {
+                vec![
+                    Token::If,
+                    Token::BinaryOp(BinaryOp::Equal),
+                    Token::BinaryOp(BinaryOp::Mod),
+                    Token::Variable(BigInt::from(4)),
+                    Token::Integer(BigInt::from(order.len())),
+                    Token::Integer(BigInt::from(i)),
+                    Token::String(c.to_string()),
+                ]
+            } else {
+                vec![Token::String(c.to_string())]
+            }
+        }));
+        cand.extend(vec![Token::Integer(
+            s.split_whitespace()
+                .last()
+                .unwrap()
+                .chars()
+                .fold(BigInt::from(0), |acc, c| {
+                    acc * order.len() + order.iter().position(|m| c == *m).unwrap()
+                }),
+        )]);
+        let cand_len = encode(&cand[..]).unwrap().len();
+        if cand_len < min_len {
+            min_len = cand_len;
+            current = cand;
+        }
+        let len_group = s
+            .split_whitespace()
+            .last()
+            .unwrap()
+            .chars()
+            .chunk_by(|c| *c)
+            .into_iter()
+            .map(|(_, chunk)| chunk.count())
+            .collect::<HashSet<_>>();
+        for len_current in len_group {
+            let mut cand = vec![
                 Token::BinaryOp(BinaryOp::Concat),
-                Token::UnaryOp(UnaryOp::ToString),
+                Token::String(s[..s.len() - len].to_owned()),
                 Token::BinaryOp(BinaryOp::Apply),
                 Token::BinaryOp(BinaryOp::Apply),
                 Token::Lambda(BigInt::from(1)),
@@ -203,32 +211,195 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
                 Token::BinaryOp(BinaryOp::Equal),
                 Token::Variable(BigInt::from(4)),
                 Token::Integer(BigInt::from(0)),
-                Token::Integer(BigInt::from(0)),
-                Token::BinaryOp(BinaryOp::Add),
-                Token::BinaryOp(BinaryOp::Add),
-                Token::BinaryOp(BinaryOp::Mod),
-                Token::Variable(BigInt::from(4)),
-                Token::Integer(BigInt::from(10)),
-                Token::Integer(BigInt::from(52)),
-                Token::BinaryOp(BinaryOp::Mul),
+                Token::String("".to_owned()),
+                Token::BinaryOp(BinaryOp::Concat),
                 Token::BinaryOp(BinaryOp::Apply),
                 Token::Variable(BigInt::from(3)),
                 Token::BinaryOp(BinaryOp::Div),
                 Token::Variable(BigInt::from(4)),
-                Token::Integer(BigInt::from(10)),
-                Token::Integer(BigInt::from(94)),
-                Token::Integer(BigInt::from_str(chunk.map(|(s, _)| s).join("").as_str()).unwrap()),
-            ]
-        } else {
-            vec![
+                Token::Integer(BigInt::from(order.len() * len_current)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(9)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(5)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Lambda(BigInt::from(6)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(5)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(6)),
+                Token::Variable(BigInt::from(6)),
+                Token::Lambda(BigInt::from(6)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(5)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(6)),
+                Token::Variable(BigInt::from(6)),
+                Token::Lambda(BigInt::from(7)),
+                Token::Lambda(BigInt::from(8)),
+                Token::If,
+                Token::BinaryOp(BinaryOp::Equal),
+                Token::Variable(BigInt::from(8)),
+                Token::Integer(BigInt::from(0)),
+                Token::Variable(BigInt::from(9)),
                 Token::BinaryOp(BinaryOp::Concat),
-                Token::String(chunk.map(|(s, _)| s).join("")),
-            ]
+                Token::Variable(BigInt::from(9)),
+                Token::BinaryOp(BinaryOp::Apply),
+                Token::Variable(BigInt::from(7)),
+                Token::BinaryOp(BinaryOp::Sub),
+                Token::Variable(BigInt::from(8)),
+                Token::Integer(BigInt::from(1)),
+                Token::BinaryOp(BinaryOp::Mod),
+                Token::BinaryOp(BinaryOp::Div),
+                Token::Variable(BigInt::from(4)),
+                Token::Integer(BigInt::from(order.len())),
+                Token::Integer(BigInt::from(len_current)),
+            ];
+            cand.extend(order.iter().enumerate().flat_map(|(i, c)| {
+                if i != order.len() - 1 {
+                    vec![
+                        Token::If,
+                        Token::BinaryOp(BinaryOp::Equal),
+                        Token::BinaryOp(BinaryOp::Mod),
+                        Token::Variable(BigInt::from(4)),
+                        Token::Integer(BigInt::from(order.len())),
+                        Token::Integer(BigInt::from(i)),
+                        Token::String(c.to_string()),
+                    ]
+                } else {
+                    vec![Token::String(c.to_string())]
+                }
+            }));
+            cand.extend(vec![Token::Integer(
+                s.split_whitespace()
+                    .last()
+                    .unwrap()
+                    .chars()
+                    .chunk_by(|c| *c)
+                    .into_iter()
+                    .fold(BigInt::from(0), |acc, (c, g)| {
+                        let mut res = acc;
+                        let mut remain = g.count();
+                        while remain > 0 {
+                            res = res * order.len() * len_current
+                                + (min(remain, len_current) - 1) * order.len()
+                                + order.iter().position(|m| c == *m).unwrap();
+                            remain -= min(remain, len_current);
+                        }
+                        res
+                    }),
+            )]);
+            let cand_len = encode(&cand[..]).unwrap().len();
+            if cand_len < min_len {
+                min_len = cand_len;
+                current = cand;
+            }
         }
-    }).collect_vec();
-    let len = tokens.len();
-    Ok(tokens.into_iter().enumerate().flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 })).collect_vec())
-    */
+    }
+    if s.split_whitespace()
+        .last()
+        .unwrap()
+        .chars()
+        .all(|c| c.is_numeric())
+    {
+        // spaceship 用のエンコード
+        let tokens = s
+            .chars()
+            .scan(false, |cum, c| {
+                let next = c.is_numeric() && (*cum || c != '0');
+                *cum = next;
+                Some((c, next))
+            })
+            .enumerate()
+            .chunk_by(|(_, (_, b))| *b)
+            .into_iter()
+            .map(|(key, chunk)| {
+                let chunk_array = chunk.collect::<Vec<_>>();
+                // 先頭と末尾では "B. " が不要になるので 8 桁分ボーナス
+                let len = chunk_array.len()
+                    + if chunk_array[0].0 == 0 { 8 } else { 0 }
+                    + if chunk_array[chunk_array.len() - 1].0 == s.len() - 1 {
+                        8
+                    } else {
+                        0
+                    };
+                // "B. B. S{} U$ I{} S{}" とエンコードするので増えた 13 文字以上の改善が得られる 27 桁以上連続しない場合は数値にしない
+                (
+                    chunk_array
+                        .into_iter()
+                        .map(|(_, (c, _))| c)
+                        .collect::<String>(),
+                    key && len >= 27,
+                )
+            })
+            .chunk_by(|(_, i)| *i)
+            .into_iter()
+            .map(|(key, chunk)| {
+                if key {
+                    vec![
+                        Token::BinaryOp(BinaryOp::Concat),
+                        Token::UnaryOp(UnaryOp::ToString),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Lambda(BigInt::from(1)),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Lambda(BigInt::from(2)),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Variable(BigInt::from(1)),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Variable(BigInt::from(2)),
+                        Token::Variable(BigInt::from(2)),
+                        Token::Lambda(BigInt::from(2)),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Variable(BigInt::from(1)),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Variable(BigInt::from(2)),
+                        Token::Variable(BigInt::from(2)),
+                        Token::Lambda(BigInt::from(3)),
+                        Token::Lambda(BigInt::from(4)),
+                        Token::If,
+                        Token::BinaryOp(BinaryOp::Equal),
+                        Token::Variable(BigInt::from(4)),
+                        Token::Integer(BigInt::from(0)),
+                        Token::Integer(BigInt::from(0)),
+                        Token::BinaryOp(BinaryOp::Add),
+                        Token::BinaryOp(BinaryOp::Add),
+                        Token::BinaryOp(BinaryOp::Mod),
+                        Token::Variable(BigInt::from(4)),
+                        Token::Integer(BigInt::from(10)),
+                        Token::Integer(BigInt::from(52)),
+                        Token::BinaryOp(BinaryOp::Mul),
+                        Token::BinaryOp(BinaryOp::Apply),
+                        Token::Variable(BigInt::from(3)),
+                        Token::BinaryOp(BinaryOp::Div),
+                        Token::Variable(BigInt::from(4)),
+                        Token::Integer(BigInt::from(10)),
+                        Token::Integer(BigInt::from(94)),
+                        Token::Integer(
+                            BigInt::from_str(chunk.map(|(s, _)| s).join("").as_str()).unwrap(),
+                        ),
+                    ]
+                } else {
+                    vec![
+                        Token::BinaryOp(BinaryOp::Concat),
+                        Token::String(chunk.map(|(s, _)| s).join("")),
+                    ]
+                }
+            })
+            .collect_vec();
+        let len = tokens.len();
+        let cand = tokens
+            .into_iter()
+            .enumerate()
+            .flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 }))
+            .collect_vec();
+        let cand_len = encode(&cand[..]).unwrap().len();
+        if cand_len < min_len {
+            current = cand;
+        }
+    }
+    Ok(current)
 }
 
 #[cfg(test)]
