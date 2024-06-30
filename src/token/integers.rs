@@ -1,5 +1,6 @@
 use anyhow::bail;
 use num_bigint::BigInt;
+use num_traits::Euclid;
 
 pub fn decode(stream: impl Iterator<Item = u8>) -> anyhow::Result<BigInt> {
     let mut ret = BigInt::ZERO;
@@ -22,10 +23,14 @@ pub fn encode(mut value: BigInt) -> anyhow::Result<String> {
     }
 
     let mut result = String::new();
+    let bar = indicatif::ProgressBar::new(value.bits());
+    let divisor = BigInt::from(94);
     while value > BigInt::ZERO {
-        let remainder = u8::try_from(value.clone() % 94)?;
+        bar.set_position(value.bits());
+        let (quotient, reminder) = value.div_rem_euclid(&divisor);
+        let remainder = u8::try_from(&reminder)?;
         result.push((remainder + b'!') as char);
-        value /= 94;
+        value = quotient;
     }
     if result.is_empty() {
         result.push('!');

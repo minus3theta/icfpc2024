@@ -17,7 +17,7 @@ pub async fn send(encoded: String) -> anyhow::Result<Vec<Token>> {
         .body(encoded)
         .send()
         .await?;
-    let result = response.text().await?;
+    let result = response.error_for_status()?.text().await?;
     if result.is_empty() {
         bail!(
             "You might have reached the rate limit 20 requests per minute. Please try again later."

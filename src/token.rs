@@ -394,10 +394,7 @@ pub fn encode_string(s: &str) -> anyhow::Result<Vec<Token>> {
             .enumerate()
             .flat_map(|(index, iter)| iter.into_iter().skip(if index != len - 1 { 0 } else { 1 }))
             .collect_vec();
-        let cand_len = encode(&cand[..]).unwrap().len();
-        if cand_len < min_len {
-            current = cand;
-        }
+        current = cand;
     }
     Ok(current)
 }
