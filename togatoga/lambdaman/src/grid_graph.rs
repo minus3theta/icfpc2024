@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::Board;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LambdamanCommand {
     Up,
     Down,
@@ -18,6 +18,12 @@ pub(crate) struct GridGraph {
     pub idx_to_pos: BTreeMap<usize, (usize, usize)>,
     // (y, x) -> idx
     pub pos_to_idx: BTreeMap<(usize, usize), usize>,
+    // cache for bfs
+    pub bfs_cache: BTreeMap<usize, Vec<usize>>,
+    pub bfs_cache_counter: BTreeMap<usize, usize>,
+    // cache for bfs path
+    pub bfs_path_cache: BTreeMap<(usize, usize), Vec<(usize, LambdamanCommand)>>,
+    pub bfs_path_cache_counter: BTreeMap<(usize, usize), usize>,
 }
 
 impl From<Board> for GridGraph {
@@ -70,6 +76,10 @@ impl From<Board> for GridGraph {
             edges,
             idx_to_pos,
             pos_to_idx,
+            bfs_cache: BTreeMap::default(),
+            bfs_path_cache_counter: BTreeMap::default(),
+            bfs_path_cache: BTreeMap::default(),
+            bfs_cache_counter: BTreeMap::default(),
         }
     }
 }
@@ -77,6 +87,13 @@ impl From<Board> for GridGraph {
 impl GridGraph {
     // Return the shortest costs from src to all nodes
     pub fn bfs(&mut self, src: usize) -> Vec<usize> {
+        if let Some(costs) = self.bfs_cache.get(&src) {
+            self.bfs_cache_counter
+                .entry(src)
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+            return costs.clone();
+        }
         let mut que = std::collections::VecDeque::new();
         que.push_back((src, 0));
         let mut visited = vec![false; self.edges.len()];
@@ -93,11 +110,19 @@ impl GridGraph {
                 }
             }
         }
+        self.bfs_cache.insert(src, results.clone());
         results
     }
 
     // Return the shortest costs from src to all nodes
-    pub fn bfs_path(&self, src: usize, target: usize) -> Vec<(usize, LambdamanCommand)> {
+    pub fn bfs_path(&mut self, src: usize, target: usize) -> Vec<(usize, LambdamanCommand)> {
+        if let Some(path) = self.bfs_path_cache.get(&(src, target)) {
+            self.bfs_path_cache_counter
+                .entry((src, target))
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+            return path.clone();
+        }
         let mut que = std::collections::VecDeque::new();
         que.push_back((src, None));
         let mut visited = vec![false; self.edges.len()];
@@ -124,6 +149,33 @@ impl GridGraph {
             node = prev_node;
         }
         path.reverse();
+        self.bfs_path_cache.insert((src, target), path.clone());
         path
+    }
+    pub fn shrink_cache(&mut self) {
+        // maximum 100000
+        if self.bfs_cache.len() > 20000 {
+            let mut couters = vec![];
+            for (src, counter) in self.bfs_cache_counter.iter() {
+                couters.push((*counter, *src));
+            }
+            couters.sort();
+            for i in 0..couters.len() / 2 {
+                self.bfs_cache.remove(&couters[i].1);
+                self.bfs_cache_counter.remove(&couters[i].1);
+            }
+        }
+
+        if self.bfs_path_cache.len() > 20000 {
+            let mut couters = vec![];
+            for (src, counter) in self.bfs_path_cache_counter.iter() {
+                couters.push((*counter, *src));
+            }
+            couters.sort();
+            for i in 0..couters.len() / 2 {
+                self.bfs_path_cache.remove(&couters[i].1);
+                self.bfs_path_cache_counter.remove(&couters[i].1);
+            }
+        }
     }
 }
