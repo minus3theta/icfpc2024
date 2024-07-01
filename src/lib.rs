@@ -5,8 +5,10 @@ use ast::{Expr, Value};
 use dotenv::dotenv;
 use token::Token;
 
+pub mod assemble;
 pub mod ast;
 pub mod token;
+
 pub const ENDPOINT: &str = "https://boundvariable.space/communicate";
 
 pub async fn send(encoded: String) -> anyhow::Result<Vec<Token>> {

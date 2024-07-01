@@ -8,8 +8,8 @@ pub use binary_op::BinaryOp;
 pub use unary_op::UnaryOp;
 
 mod binary_op;
-mod integers;
-mod strings;
+pub mod integers;
+pub mod strings;
 mod unary_op;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -64,6 +64,14 @@ pub fn decode_token(s: &str) -> anyhow::Result<Token> {
         b'L' => integers::decode(bytes).map(Token::Lambda),
         b'v' => integers::decode(bytes).map(Token::Variable),
         unk => bail!("Unknown token: {}", unk as char),
+    }
+}
+
+impl FromStr for Token {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        decode_token(s)
     }
 }
 
