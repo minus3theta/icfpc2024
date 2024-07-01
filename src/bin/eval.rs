@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Read};
 
 use icfpc2024::{
     ast::{Expr, Value},
@@ -7,7 +7,7 @@ use icfpc2024::{
 
 fn main() -> anyhow::Result<()> {
     let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
+    io::stdin().read_to_string(&mut input)?;
 
     let tokens = token::decode_token_stream(input.trim())?;
     let ast = Expr::from_tokens(&tokens)?;

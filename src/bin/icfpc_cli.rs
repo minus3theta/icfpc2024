@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Ok};
 use clap::{Parser, Subcommand, ValueEnum};
-use icfpc2024::token::{self, encode_string, Token};
+use icfpc2024::{
+    assemble::assemble,
+    token::{self, encode_string, Token},
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -61,7 +64,7 @@ async fn submit_solution(
     eprintln!("problem_name: {}", problem_name);
 
     let request = if raw {
-        text
+        assemble(&text)?.join(" ")
     } else {
         let tokens = match task {
             Task::Lambdaman => encode_lambdaman(problem_name, &text)?,
