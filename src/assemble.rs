@@ -11,7 +11,7 @@ fn parse_mnemonic(mn: &str) -> anyhow::Result<String> {
             .context("String literal does not end with '\"'")?;
         Ok(format!("S{}", strings::encode(mn)?))
     } else if mn == "Y" {
-        Ok(r#"L" B$ L" B$ L# B$ v" B$ v# v#"#.to_owned())
+        Ok(r#"L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v#"#.to_owned())
     } else {
         Ok(mn.to_owned())
     }
