@@ -267,18 +267,16 @@ pub fn compute_score_details(
             a[p2.0][p2.1] = tmp;
         }
         if dir1 != !0 {
-            if !can_move(input.n, &input.hs, &input.vs, p1.0, p1.1, dir1) {
-                return (0, format!("Invalid move: {}", DIRS[dir1]), (a, p1, p2));
+            if can_move(input.n, &input.hs, &input.vs, p1.0, p1.1, dir1) {
+                p1.0 += DIJ[dir1].0;
+                p1.1 += DIJ[dir1].1;
             }
-            p1.0 += DIJ[dir1].0;
-            p1.1 += DIJ[dir1].1;
         }
         if dir2 != !0 {
-            if !can_move(input.n, &input.hs, &input.vs, p2.0, p2.1, dir2) {
-                return (0, format!("Invalid move: {}", DIRS[dir2]), (a, p1, p2));
+            if can_move(input.n, &input.hs, &input.vs, p2.0, p2.1, dir2) {
+                p2.0 += DIJ[dir2].0;
+                p2.1 += DIJ[dir2].1;
             }
-            p2.0 += DIJ[dir2].0;
-            p2.1 += DIJ[dir2].1;
         }
     }
     let after = compute_diff(&input, &a);

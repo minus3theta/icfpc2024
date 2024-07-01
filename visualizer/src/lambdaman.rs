@@ -169,16 +169,29 @@ pub fn compute_score_details(
     visited[input.pos.0][input.pos.1] = true;
     let mut rest = input.dot;
     let mut pos = input.pos;
-    for (turn, &dir) in moves.iter().take(max_turn).enumerate() {
-        pos.0 += DIJ[dir].0;
-        pos.1 += DIJ[dir].1;
+    for (_turn, &dir) in moves.iter().take(max_turn).enumerate() {     
         if pos.0 >= input.wall.len() || pos.1 >= input.wall[0].len() || input.wall[pos.0][pos.1] {
-            return (
-                0,
-                format!("Invalid move: {} in turn {}", DIRS[dir], turn + 1),
-                (visited, pos),
-            );
+            
+            continue          
         }
+        let n_pos_0 = pos.0 as i64 + DIJ[dir].0 as i64;
+        let n_pos_1 = pos.1 as i64 + DIJ[dir].1 as i64;        
+        // NOTE: When Lambda-Man is instructed to move into a square containing a wall, nothing happens and the instruction is skipped.
+        if n_pos_0 < 0
+            || n_pos_1 < 0
+            || n_pos_0 as usize >= input.wall.len()
+            || n_pos_1 as usize >= input.wall[0].len()
+        {
+            // reach out of the map
+            continue;
+        }
+        if input.wall[n_pos_0 as usize][n_pos_1 as usize] {
+            // conflict with wall
+            continue;
+        } 
+
+        pos.0 = n_pos_0 as usize;
+        pos.1 = n_pos_1 as usize;
         if !visited[pos.0][pos.1] {
             visited[pos.0][pos.1] = true;
             rest -= 1;
