@@ -46,10 +46,10 @@ function App() {
       const { cells } = h
       const xs = Array.from(cells.keys()).map(p => JSON.parse(p).x)
       const ys = Array.from(cells.keys()).map(p => JSON.parse(p).y)
-      minx = Math.min(minx, ...xs)
-      maxx = Math.max(maxx, ...xs)
-      miny = Math.min(miny, ...ys)
-      maxy = Math.max(maxy, ...ys)
+      minx = Math.max(Math.min(minx, ...xs), -200)
+      maxx = Math.min(Math.max(maxx, ...xs), 200)
+      miny = Math.max(Math.min(miny, ...ys), -200)
+      maxy = Math.min(Math.max(maxy, ...ys), 200)
     }
     setMinX(minx)
     setMaxX(maxx)
@@ -79,7 +79,13 @@ function App() {
           setScale(0)
         }}>Submit</button>
       </form>
-      <div>
+      <div onKeyDown={e => {
+        if (e.key === 'ArrowLeft') {
+          setScale(Math.max(0, scale-1))
+        } else if (e.key === 'ArrowRight') {
+          setScale(Math.min(history.length-1, scale+1))
+        }
+      }}>
         <button onClick={e => {
           e.preventDefault()
           setScale(Math.max(0, scale-1))
