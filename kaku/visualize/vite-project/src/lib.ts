@@ -338,6 +338,9 @@ export const tickBoard = (board: Board, histories: Board[]): {board: Board, outp
     times.get(time)?.forEach(newCell => {
       newBoard.cells.set(JSON.stringify({ x: newCell.p.x, y: newCell.p.y }), newCell.c)
     })
+    if (outputs.length > 0) {
+      newBoard.tick = 0
+    }
     return {board: newBoard, outputs}
   }
 
@@ -350,7 +353,8 @@ export const tickBoard = (board: Board, histories: Board[]): {board: Board, outp
       }
     }
   })
-  return {board: { tick: board.tick + 1, cells: newCells }, outputs}
+  const tick = outputs.length > 0 ? 0 : board.tick + 1
+  return {board: { tick, cells: newCells }, outputs}
 }
 
 export const applyAB = (board: Board, a: number, b: number): Board => {
@@ -373,5 +377,24 @@ export const findHistory = (histories: Board[], tick: number): Board => {
     }
   }
   throw new Error("History not found");
+}
+
+export const calcScore = (hist: Board[]): number => {
+    var minx = 0
+    var maxx = 0
+    var miny = 0
+    var maxy = 0
+    var maxt = 0
+    for (const h of hist) {
+      const { cells, tick } = h
+      const xs = Array.from(cells.keys()).map(p => JSON.parse(p).x)
+      const ys = Array.from(cells.keys()).map(p => JSON.parse(p).y)
+      minx = Math.max(Math.min(minx, ...xs), -200)
+      maxx = Math.min(Math.max(maxx, ...xs), 200)
+      miny = Math.max(Math.min(miny, ...ys), -200)
+      maxy = Math.min(Math.max(maxy, ...ys), 200)
+      maxt = Math.max(maxt, tick)
+    }
+    return (maxx - minx + 1) * (maxy - miny + 1) * maxt
 }
 
