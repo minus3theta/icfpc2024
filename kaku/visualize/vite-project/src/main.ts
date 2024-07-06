@@ -15,7 +15,7 @@ import { applyAB, parseBoard, printBoard, tickBoard } from "./lib"
 `
 
 const parsed = parseBoard(
-`1 > . < 2`)
+`1 > . < 1`)
 
 console.log(printBoard(parsed))
 
@@ -42,13 +42,15 @@ for (let index = 0; index < 40; index++) {
 // console.log(current)
 // console.log(outputs)
 `
-. . . 1 . . . . . .
-. . A - . > . > . .
-. . . . . 0 = 6 @ 1
-. . A * . . . . 3 .
-. . < . . A + S . .
--4 @ 1 v . . . . . .
-. 3 . . . . . . . .
-. . 1 @ 4 . . . . .
-. . . 3 . . . . . .
+solve 3d6
+ . . . . 23 . 1 . .
+ . 2 > . = . # S .
+ . v . . 1 . . . .
+ . . > . + . > . .
+ . v . . . . 6 @ 3
+ . . > . . 0 . 4 .
+ A = A % . = . . .
+ . . . . . S . . .
+ 1 # . . . . . . .
+ . S . . . . . . .
 `

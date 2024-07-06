@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { Board, applyAB, parseBoard, printCell, tickBoard } from './lib'
+import { Board, applyAB, calcScore, parseBoard, printCell, tickBoard } from './lib'
 
 function App() {
   const [board, setBoard] = useState('')
@@ -13,7 +13,8 @@ function App() {
   const [maxY, setMaxY] = useState(0)
   const [A, setA] = useState(0)
   const [B, setB] = useState(0)
-
+  const [maxTick, setMaxTick] = useState(0)
+  const [score, setScore] = useState(0)
 
   useEffect(() => {
     const parsed = parseBoard(board)
@@ -42,32 +43,42 @@ function App() {
     var maxx = 0
     var miny = 0
     var maxy = 0
+    var maxt = 0
     for (const h of hist) {
-      const { cells } = h
+      const { cells, tick } = h
       const xs = Array.from(cells.keys()).map(p => JSON.parse(p).x)
       const ys = Array.from(cells.keys()).map(p => JSON.parse(p).y)
-      minx = Math.min(minx, ...xs)
-      maxx = Math.max(maxx, ...xs)
-      miny = Math.min(miny, ...ys)
-      maxy = Math.max(maxy, ...ys)
+      minx = Math.max(Math.min(minx, ...xs), -200)
+      maxx = Math.min(Math.max(maxx, ...xs), 200)
+      miny = Math.max(Math.min(miny, ...ys), -200)
+      maxy = Math.min(Math.max(maxy, ...ys), 200)
+      maxt = Math.max(maxt, tick)
     }
     setMinX(minx)
     setMaxX(maxx)
     setMinY(miny)
     setMaxY(maxy)
     setHistory(hist)
+    setMaxTick(maxt)
+    setScore(calcScore(hist.slice(0, hist.length-1)))
   }, [board, A, B])
 
   return (
     <>
       <form>
-        <textarea id='solution' defaultValue={board}/>
-        <input id='A' type='number' defaultValue={A} onChange={(e) => {
-          e.preventDefault()
-        }} />
-        <input id='B' type='number' defaultValue={B} onChange={(e) => {
-          e.preventDefault()
-        }} />
+        <div>
+          <textarea id='solution' defaultValue={board}/>
+        </div>
+        <div>
+          A: <input id='A' type='number' defaultValue={A} onChange={(e) => {
+            e.preventDefault()
+          }} />
+        </div>
+        <div>
+          B: <input id='B' type='number' defaultValue={B} onChange={(e) => {
+            e.preventDefault()
+          }} />
+        </div>
         <button onClick={e => {
           e.preventDefault()
           const text = document.getElementById('solution') as HTMLTextAreaElement
@@ -77,9 +88,15 @@ function App() {
           const b = document.getElementById('B') as HTMLInputElement
           setB(parseInt(b.value))
           setScale(0)
-        }}>Submit</button>
+        }}>Execute</button>
       </form>
-      <div>
+      <div onKeyDown={e => {
+        if (e.key === 'ArrowLeft') {
+          setScale(Math.max(0, scale-1))
+        } else if (e.key === 'ArrowRight') {
+          setScale(Math.min(history.length-1, scale+1))
+        }
+      }} className='range-bar'>
         <button onClick={e => {
           e.preventDefault()
           setScale(Math.max(0, scale-1))
@@ -91,8 +108,10 @@ function App() {
           e.preventDefault()
           setScale(Math.min(history.length-1, scale+1))
         }}>Next</button>
-        <div>{scale} / {history.length-1}</div>
       </div>
+      <div>{scale} / {history.length-1}</div>
+      <div>maxTick: {maxTick}</div>
+      <div>volume: {score}</div>
       <div>output: {output}</div>
       {history.length > 0 ? (() => {
         const b = history[scale]
@@ -100,7 +119,7 @@ function App() {
         const range = (start: number, stop: number) => Array.from({ length: (stop - start) + 1}, (_, i) => start + i);
 
         return <div>
-          <code>tick: {b.tick}</code>
+          <div>tick: {b.tick}</div>
           <table>
           {
             range(minY, maxY).map(y => (
@@ -113,10 +132,16 @@ function App() {
             ))
           }
         </table>
+          <div>tick: {b.tick}</div>
           </div>
       })() : <></>}
-      <div>output: {output}</div>
-      <div>
+      <div onKeyDown={e => {
+        if (e.key === 'ArrowLeft') {
+          setScale(Math.max(0, scale-1))
+        } else if (e.key === 'ArrowRight') {
+          setScale(Math.min(history.length-1, scale+1))
+        }
+      }} className='range-bar'>
         <button onClick={e => {
           e.preventDefault()
           setScale(Math.max(0, scale-1))
@@ -128,8 +153,8 @@ function App() {
           e.preventDefault()
           setScale(Math.min(history.length-1, scale+1))
         }}>Next</button>
-        <div>{scale} / {history.length-1}</div>
       </div>
+      <div>{scale} / {history.length-1}</div>
     </>
   )
 }
